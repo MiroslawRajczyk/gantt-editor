@@ -1,0 +1,214 @@
+/* Layout */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.app__header {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 48px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  flex-shrink: 0;
+  border-bottom: 1px solid #313244;
+}
+
+.app__logo {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.app__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app__panel {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Divider */
+.divider {
+  width: 5px;
+  flex-shrink: 0;
+  background: #e0e0e0;
+  cursor: col-resize;
+  transition: background 0.15s;
+}
+
+.divider:hover,
+.divider:active {
+  background: #7c85f5;
+}
+
+/* Task Panel */
+.task-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+  border-right: 1px solid #e8e8e8;
+}
+
+/* Header height driven by JS constant (GANTT_HEADER_HEIGHT = 85px)
+   so it aligns with frappe-gantt's sticky header */
+.task-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.task-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.task-panel__add-btn {
+  padding: 5px 12px;
+  background: #7c85f5;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.task-panel__add-btn:hover {
+  background: #5c67e8;
+}
+
+.task-panel__list {
+  flex: 1;
+  overflow-y: auto;
+  /* No padding-top/bottom — rows are self-contained 48px blocks */
+}
+
+.task-panel__empty {
+  padding: 24px 16px;
+  color: #999;
+  text-align: center;
+}
+
+/* Task Row — fixed 48px to match frappe-gantt row height (bar_height + padding) */
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid #f0f0f0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+.task-row:hover {
+  background: #fafafa;
+}
+
+.task-row__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-row__name-text {
+  display: block;
+  cursor: text;
+  font-weight: 500;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 5px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.task-row__name-text:hover {
+  border-color: #d0d0d0;
+  background: #f5f5f5;
+}
+
+.task-row__name-input {
+  width: 100%;
+  font-size: 13px;
+  padding: 3px 5px;
+  border: 1px solid #7c85f5;
+  border-radius: 4px;
+  outline: none;
+  background: #f8f8ff;
+}
+
+/* Dates: two date inputs side-by-side with an arrow separator */
+.task-row__dates {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.task-row__date-sep {
+  font-size: 11px;
+  color: #bbb;
+}
+
+.task-row__date-input {
+  font-size: 11px;
+  padding: 2px 3px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #444;
+  background: #fff;
+  width: 110px;
+}
+
+.task-row__date-input:focus {
+  outline: none;
+  border-color: #7c85f5;
+}
+
+.task-row__delete {
+  color: #ccc;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.task-row__delete:hover {
+  color: #e55;
+  background: #fff0f0;
+}
+
+/* Gantt Panel */
+.gantt-panel {
+  flex: 1;
+  overflow: hidden;
+  background: #fff;
+  position: relative;
+}
+
+/* Fills the panel so containerRef.current.clientHeight gives the panel height */
+.gantt-panel__chart {
+  height: 100%;
+}
+
+.gantt-panel__empty-msg {
+  padding: 32px 24px;
+  color: #999;
+  text-align: center;
+}
