@@ -8,6 +8,23 @@ function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
+function getAllSuccessors(taskId: string, allTasks: GanttTask[]): string[] {
+  const result: string[] = []
+  const queue = [taskId]
+  const visited = new Set<string>([taskId])
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const task of allTasks) {
+      if (task.dependencies?.includes(current) && !visited.has(task.id)) {
+        visited.add(task.id)
+        result.push(task.id)
+        queue.push(task.id)
+      }
+    }
+  }
+  return result
+}
+
 interface Props {
   tasks: GanttTask[]
   onDateChange: (id: string, start: Date, end: Date) => void
@@ -28,10 +45,12 @@ export function GanttPanel({
   const onDateChangeRef = useRef(onDateChange)
   const onContainerReadyRef = useRef(onContainerReady)
   const onToggleDependencyRef = useRef(onToggleDependency)
+  const tasksRef = useRef(tasks)
   useEffect(() => {
     onDateChangeRef.current = onDateChange
     onContainerReadyRef.current = onContainerReady
     onToggleDependencyRef.current = onToggleDependency
+    tasksRef.current = tasks
   })
 
   // Connect-mode state (React) + refs (for use inside frappe-gantt callbacks)
@@ -39,10 +58,6 @@ export function GanttPanel({
   const [connectSource, setConnectSource] = useState<string | null>(null)
   const connectModeRef = useRef(false)
   const connectSourceRef = useRef<string | null>(null)
-
-  // When a drag originates inside the gantt, skip the next refresh so we
-  // don't reset the scroll position that frappe-gantt just set.
-  const skipNextRefreshRef = useRef(false)
 
   // This ref is reassigned every render so the gantt on_click callback always
   // has access to up-to-date closures (connectModeRef etc. are refs so stale
@@ -124,11 +139,11 @@ export function GanttPanel({
     }))
 
     if (ganttRef.current) {
-      if (skipNextRefreshRef.current) {
-        skipNextRefreshRef.current = false
-        return
-      }
+      const gc = containerRef.current.querySelector('.gantt-container') as HTMLElement | null
+      const sl = gc?.scrollLeft ?? 0
+      const st = gc?.scrollTop ?? 0
       ganttRef.current.refresh(frappeTasks)
+      if (gc) { gc.scrollLeft = sl; gc.scrollTop = st }
     } else {
       const panelHeight = containerRef.current.clientHeight
 
@@ -137,9 +152,22 @@ export function GanttPanel({
         container_height: panelHeight,
         popup: false,
         on_date_change: (task, start, end) => {
-          if (task.id) {
-            skipNextRefreshRef.current = true
-            onDateChangeRef.current(task.id, start, end)
+          if (!task.id) return
+          const allTasks = tasksRef.current
+          const prev = allTasks.find(t => t.id === task.id)
+          const deltaMs = prev ? start.getTime() - prev.start.getTime() : 0
+          onDateChangeRef.current(task.id, start, end)
+          if (deltaMs !== 0) {
+            for (const sid of getAllSuccessors(task.id, allTasks)) {
+              const s = allTasks.find(t => t.id === sid)
+              if (s) {
+                onDateChangeRef.current(
+                  sid,
+                  new Date(s.start.getTime() + deltaMs),
+                  new Date(s.end.getTime() + deltaMs),
+                )
+              }
+            }
           }
         },
         on_click: (task) => ganttClickRef.current(task),
