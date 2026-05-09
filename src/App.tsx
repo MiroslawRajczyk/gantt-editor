@@ -24,6 +24,20 @@ export default function App() {
     })
   }, [])
 
+  const handleToggleDependency = useCallback(
+    (sourceId: string, targetId: string) => {
+      const target = tasks.find(t => t.id === targetId)
+      if (!target) return
+      const deps = target.dependencies ?? []
+      updateTask(targetId, {
+        dependencies: deps.includes(sourceId)
+          ? deps.filter(d => d !== sourceId)
+          : [...deps, sourceId],
+      })
+    },
+    [tasks, updateTask],
+  )
+
   const handleContainerReady = useCallback((ganttContainer: HTMLElement) => {
     const listEl = taskListRef.current
     if (!listEl) return
@@ -67,6 +81,7 @@ export default function App() {
             tasks={tasks}
             onDateChange={(id, start, end) => updateTask(id, { start, end })}
             onContainerReady={handleContainerReady}
+            onToggleDependency={handleToggleDependency}
           />
         </div>
       </div>
