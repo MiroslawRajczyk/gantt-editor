@@ -14,14 +14,27 @@ interface Props {
   isDragOver: boolean
 }
 
-function toDateInput(d: Date): string {
-  return d.toISOString().slice(0, 10)
+function toDateDisplay(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}.${mm}.${d.getFullYear()}`
+}
+
+function parseDateDisplay(s: string): Date | null {
+  const [dd, mm, yyyy] = s.split('.')
+  if (!dd || !mm || !yyyy) return null
+  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+  return isNaN(d.getTime()) ? null : d
 }
 
 export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(task.name)
+  const [startDraft, setStartDraft] = useState(() => toDateDisplay(task.start))
+  const [endDraft, setEndDraft] = useState(() => toDateDisplay(task.end))
   const inputRef = useRef<HTMLInputElement>(null)
+  const hiddenStartRef = useRef<HTMLInputElement>(null)
+  const hiddenEndRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (editing) inputRef.current?.focus()
@@ -31,6 +44,9 @@ export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOv
     if (!editing) setDraft(task.name)
   }, [task.name, editing])
 
+  useEffect(() => { setStartDraft(toDateDisplay(task.start)) }, [task.start])
+  useEffect(() => { setEndDraft(toDateDisplay(task.end)) }, [task.end])
+
   function commitName() {
     const trimmed = draft.trim() || task.name
     setDraft(trimmed)
@@ -38,15 +54,15 @@ export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOv
     setEditing(false)
   }
 
-  function handleStartChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const d = new Date(e.target.value)
-    if (isNaN(d.getTime())) return
+  function commitStart() {
+    const d = parseDateDisplay(startDraft)
+    if (!d) { setStartDraft(toDateDisplay(task.start)); return }
     onUpdate({ start: d, end: d > task.end ? d : task.end })
   }
 
-  function handleEndChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const d = new Date(e.target.value)
-    if (isNaN(d.getTime())) return
+  function commitEnd() {
+    const d = parseDateDisplay(endDraft)
+    if (!d) { setEndDraft(toDateDisplay(task.end)); return }
     onUpdate({ end: d, start: d < task.start ? d : task.start })
   }
 
@@ -87,21 +103,65 @@ export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOv
       </div>
 
       <div className="task-row__dates">
-        <input
-          type="date"
-          className="task-row__date-input"
-          title="Start date"
-          value={toDateInput(task.start)}
-          onChange={handleStartChange}
-        />
+        <div className="task-row__date-field">
+          <input
+            type="text"
+            className="task-row__date-input"
+            title="Start date"
+            placeholder="DD.MM.YYYY"
+            value={startDraft}
+            onChange={e => setStartDraft(e.target.value)}
+            onBlur={commitStart}
+          />
+          <button
+            className="task-row__date-cal"
+            tabIndex={-1}
+            onMouseDown={e => { e.preventDefault(); hiddenStartRef.current?.showPicker() }}
+            aria-label="Open start date calendar"
+          >📅</button>
+          <input
+            ref={hiddenStartRef}
+            type="date"
+            style={{ display: 'none' }}
+            onChange={e => {
+              if (!e.target.value) return
+              const [yyyy, mm, dd] = e.target.value.split('-')
+              setStartDraft(`${dd}.${mm}.${yyyy}`)
+              const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+              onUpdate({ start: d, end: d > task.end ? d : task.end })
+            }}
+          />
+        </div>
         <span className="task-row__date-sep">→</span>
-        <input
-          type="date"
-          className="task-row__date-input"
-          title="Due date"
-          value={toDateInput(task.end)}
-          onChange={handleEndChange}
-        />
+        <div className="task-row__date-field">
+          <input
+            type="text"
+            className="task-row__date-input"
+            title="Due date"
+            placeholder="DD.MM.YYYY"
+            value={endDraft}
+            onChange={e => setEndDraft(e.target.value)}
+            onBlur={commitEnd}
+          />
+          <button
+            className="task-row__date-cal"
+            tabIndex={-1}
+            onMouseDown={e => { e.preventDefault(); hiddenEndRef.current?.showPicker() }}
+            aria-label="Open end date calendar"
+          >📅</button>
+          <input
+            ref={hiddenEndRef}
+            type="date"
+            style={{ display: 'none' }}
+            onChange={e => {
+              if (!e.target.value) return
+              const [yyyy, mm, dd] = e.target.value.split('-')
+              setEndDraft(`${dd}.${mm}.${yyyy}`)
+              const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
+              onUpdate({ end: d, start: d < task.start ? d : task.start })
+            }}
+          />
+        </div>
       </div>
 
       <button

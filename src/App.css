@@ -337,14 +337,31 @@
   color: #bbb;
 }
 
+.task-row__date-field {
+  display: flex;
+  align-items: center;
+}
+
 .task-row__date-input {
   font-size: 11px;
   padding: 2px 3px;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 4px 0 0 4px;
   color: #444;
   background: #fff;
-  width: 110px;
+  width: 86px;
+}
+
+.task-row__date-cal {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #666;
 }
 
 .task-row__date-input:focus {
