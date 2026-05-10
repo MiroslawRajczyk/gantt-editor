@@ -8,10 +8,11 @@ export function Divider({ onResize }: Props) {
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault()
-      const startX = e.clientX
+      let lastX = e.clientX
 
       const onMove = (ev: MouseEvent) => {
-        onResize(ev.clientX - startX)
+        onResize(ev.clientX - lastX)
+        lastX = ev.clientX
       }
 
       const onUp = () => {
