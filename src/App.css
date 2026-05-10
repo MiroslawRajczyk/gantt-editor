@@ -340,6 +340,7 @@
 .task-row__date-field {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .task-row__date-input {

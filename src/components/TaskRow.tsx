@@ -118,11 +118,18 @@ export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOv
             tabIndex={-1}
             onMouseDown={e => { e.preventDefault(); hiddenStartRef.current?.showPicker() }}
             aria-label="Open start date calendar"
-          >📅</button>
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+              <rect x="0.65" y="1.65" width="10.7" height="9.7" rx="1.2"/>
+              <line x1="0.65" y1="4.65" x2="11.35" y2="4.65"/>
+              <line x1="3.5" y1="0.5" x2="3.5" y2="2.8"/>
+              <line x1="8.5" y1="0.5" x2="8.5" y2="2.8"/>
+            </svg>
+          </button>
           <input
             ref={hiddenStartRef}
             type="date"
-            style={{ display: 'none' }}
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none', bottom: 0, right: 0 }}
             onChange={e => {
               if (!e.target.value) return
               const [yyyy, mm, dd] = e.target.value.split('-')
@@ -148,11 +155,18 @@ export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOv
             tabIndex={-1}
             onMouseDown={e => { e.preventDefault(); hiddenEndRef.current?.showPicker() }}
             aria-label="Open end date calendar"
-          >📅</button>
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+              <rect x="0.65" y="1.65" width="10.7" height="9.7" rx="1.2"/>
+              <line x1="0.65" y1="4.65" x2="11.35" y2="4.65"/>
+              <line x1="3.5" y1="0.5" x2="3.5" y2="2.8"/>
+              <line x1="8.5" y1="0.5" x2="8.5" y2="2.8"/>
+            </svg>
+          </button>
           <input
             ref={hiddenEndRef}
             type="date"
-            style={{ display: 'none' }}
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none', bottom: 0, right: 0 }}
             onChange={e => {
               if (!e.target.value) return
               const [yyyy, mm, dd] = e.target.value.split('-')
