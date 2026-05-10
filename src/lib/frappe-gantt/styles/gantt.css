@@ -275,15 +275,6 @@
         transition: stroke-width 0.3s ease;
     }
 
-    & .bar-progress {
-        fill: var(--g-progress-color);
-        border-radius: 4px;
-    }
-
-    & .bar-expected-progress {
-        fill: var(--g-expected-progress);
-    }
-
     & .bar-invalid {
         fill: transparent;
         stroke: var(--g-bar-border);
@@ -317,10 +308,6 @@
             cursor: ew-resize;
             opacity: 1;
         }
-    }
-
-    & .handle.progress {
-        fill: var(--g-text-muted);
     }
 
     & .bar-wrapper {

@@ -379,7 +379,7 @@ export default class Gantt {
 
     setup_layers() {
         this.layers = {};
-        const layers = ['grid', 'arrow', 'progress', 'bar'];
+        const layers = ['grid', 'arrow', 'bar'];
         // make group layers
         for (let layer of layers) {
             this.layers[layer] = createSVG('g', {
@@ -1351,95 +1351,10 @@ export default class Gantt {
                 const $bar = bar.$bar;
                 if (!$bar.finaldx) return;
                 bar.date_changed();
-                bar.compute_progress();
                 bar.set_action_completed();
             });
         });
 
-        this.bind_bar_progress();
-    }
-
-    bind_bar_progress() {
-        let x_on_start = 0;
-        let is_resizing = null;
-        let bar = null;
-        let $bar_progress = null;
-        let $bar = null;
-
-        $.on(this.$svg, 'mousedown', '.handle.progress', (e, handle) => {
-            is_resizing = true;
-            x_on_start = e.offsetX || e.layerX;
-
-            const $bar_wrapper = $.closest('.bar-wrapper', handle);
-            const id = $bar_wrapper.getAttribute('data-id');
-            bar = this.get_bar(id);
-
-            $bar_progress = bar.$bar_progress;
-            $bar = bar.$bar;
-
-            $bar_progress.finaldx = 0;
-            $bar_progress.owidth = $bar_progress.getWidth();
-            $bar_progress.min_dx = -$bar_progress.owidth;
-            $bar_progress.max_dx = $bar.getWidth() - $bar_progress.getWidth();
-        });
-
-        const range_positions = this.config.ignored_positions.map((d) => [
-            d,
-            d + this.config.column_width,
-        ]);
-
-        $.on(this.$svg, 'mousemove', (e) => {
-            if (!is_resizing) return;
-            let now_x = e.offsetX || e.layerX;
-
-            let moving_right = now_x > x_on_start;
-            if (moving_right) {
-                let k = range_positions.find(
-                    ([begin, end]) => now_x >= begin && now_x < end,
-                );
-                while (k) {
-                    now_x = k[1];
-                    k = range_positions.find(
-                        ([begin, end]) => now_x >= begin && now_x < end,
-                    );
-                }
-            } else {
-                let k = range_positions.find(
-                    ([begin, end]) => now_x > begin && now_x <= end,
-                );
-                while (k) {
-                    now_x = k[0];
-                    k = range_positions.find(
-                        ([begin, end]) => now_x > begin && now_x <= end,
-                    );
-                }
-            }
-
-            let dx = now_x - x_on_start;
-            if (dx > $bar_progress.max_dx) {
-                dx = $bar_progress.max_dx;
-            }
-            if (dx < $bar_progress.min_dx) {
-                dx = $bar_progress.min_dx;
-            }
-
-            $bar_progress.setAttribute('width', $bar_progress.owidth + dx);
-            $.attr(bar.$handle_progress, 'cx', $bar_progress.getEndX());
-
-            $bar_progress.finaldx = dx;
-        });
-
-        $.on(this.$svg, 'mouseup', () => {
-            is_resizing = false;
-            if (!($bar_progress && $bar_progress.finaldx)) return;
-
-            $bar_progress.finaldx = 0;
-            bar.progress_changed();
-            bar.set_action_completed();
-            bar = null;
-            $bar_progress = null;
-            $bar = null;
-        });
     }
 
     // Fixed BFS: adds successors to 'out' only after computing next 'to_process',
