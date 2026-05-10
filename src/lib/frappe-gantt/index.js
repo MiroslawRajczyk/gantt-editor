@@ -232,7 +232,7 @@ export default class Gantt {
 
     refresh(tasks) {
         this.setup_tasks(tasks);
-        this.change_view_mode();
+        this.change_view_mode(this.options.view_mode, true);
     }
 
     update_task(id, new_details) {

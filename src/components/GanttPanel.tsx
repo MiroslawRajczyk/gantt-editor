@@ -122,6 +122,11 @@ export function GanttPanel({
     }))
 
     if (ganttRef.current) {
+      // During an active drag bar_being_dragged is true — skip refresh to keep
+      // bar DOM elements intact. React state still updates so LHS stays live.
+      // The first render after mouseup (bar_being_dragged = null) does the refresh.
+      if ((ganttRef.current as any)?.bar_being_dragged) return
+
       const gc = containerRef.current.querySelector('.gantt-container') as HTMLElement | null
       const sl = gc?.scrollLeft ?? 0
       const st = gc?.scrollTop ?? 0
@@ -136,9 +141,6 @@ export function GanttPanel({
         popup: false,
         on_date_change: (task, start, end) => {
           if (!task.id) return
-          // Suppress intermediate drag updates — bar_being_dragged is truthy while
-          // dragging. Only commit to React state on the final mouseup call.
-          if ((ganttRef.current as any)?.bar_being_dragged) return
           const allTasks = tasksRef.current
           const prev = allTasks.find(t => t.id === task.id)
           onDateChangeRef.current(task.id, start, end)

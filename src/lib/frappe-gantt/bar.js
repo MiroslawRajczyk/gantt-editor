@@ -336,8 +336,8 @@ export default class Bar {
 
         this.update_label_position();
         this.update_handle_position();
-        this.date_changed();
         this.compute_duration();
+        this.date_changed();
         this.update_arrow_position();
     }
 
