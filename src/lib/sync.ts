@@ -24,6 +24,44 @@ function buildRemoteEdgeKey(taskId: string, dependsOn: string): string {
   return `${taskId}->${dependsOn}`
 }
 
+function topoSort(tasks: GanttTask[]): GanttTask[] {
+  const ids = new Set(tasks.map(t => t.id))
+  const indegree = new Map<string, number>()
+  const adj = new Map<string, string[]>()
+  for (const t of tasks) {
+    indegree.set(t.id, 0)
+    adj.set(t.id, [])
+  }
+  for (const t of tasks) {
+    for (const predId of t.dependencies ?? []) {
+      if (!ids.has(predId)) continue
+      adj.get(predId)!.push(t.id)
+      indegree.set(t.id, indegree.get(t.id)! + 1)
+    }
+  }
+  const queue: string[] = []
+  for (const [id, deg] of indegree) {
+    if (deg === 0) queue.push(id)
+  }
+  const taskById = new Map(tasks.map(t => [t.id, t]))
+  const result: GanttTask[] = []
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    result.push(taskById.get(id)!)
+    for (const succId of adj.get(id)!) {
+      const deg = indegree.get(succId)! - 1
+      indegree.set(succId, deg)
+      if (deg === 0) queue.push(succId)
+    }
+  }
+  // Append any cyclic remainder
+  const inResult = new Set(result.map(t => t.id))
+  for (const t of tasks) {
+    if (!inResult.has(t.id)) result.push(t)
+  }
+  return result
+}
+
 export async function syncWithClickUp(
   config: ClickUpConfig,
   localTasks: GanttTask[],
@@ -216,8 +254,11 @@ export async function syncWithClickUp(
     t.dependencies = finalLocalPreds.length ? finalLocalPreds : undefined
   }
 
-  // Phase 6 — commit
-  setTasks(next)
+  // Phase 6 — commit (new tasks in topological order)
+  const existingIds = new Set(localTasks.map(t => t.id))
+  const existingTasks = next.filter(t => existingIds.has(t.id))
+  const newTasks = next.filter(t => !existingIds.has(t.id))
+  setTasks([...existingTasks, ...topoSort(newTasks)])
   report.durationMs = performance.now() - t0
   return report
 }
