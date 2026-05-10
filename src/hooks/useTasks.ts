@@ -71,5 +71,5 @@ export function useTasks() {
     setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)))
   }
 
-  return { tasks, addTask, removeTask, updateTask }
+  return { tasks, setTasks, addTask, removeTask, updateTask }
 }

@@ -23,6 +23,179 @@
   letter-spacing: 0.03em;
 }
 
+.app__header-spacer {
+  flex: 1;
+}
+
+.app__sync-report {
+  font-size: 12px;
+  color: #a6adc8;
+  margin: 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.app__sync-report--err {
+  color: #f38ba8;
+}
+
+.app__sync-stamp {
+  font-size: 12px;
+  color: #a6adc8;
+  margin: 0 10px;
+}
+
+.app__sync-btn,
+.app__settings-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  margin-left: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.app__sync-btn:hover:not(:disabled),
+.app__settings-btn:hover {
+  background: #45475a;
+  border-color: #7c85f5;
+}
+
+.app__sync-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ClickUp settings modal */
+.clickup-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clickup-modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  width: 480px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  color: #1e1e2e;
+}
+
+.clickup-modal__title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.clickup-modal__row {
+  margin-bottom: 14px;
+}
+
+.clickup-modal__row label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #444;
+}
+
+.clickup-modal__row input,
+.clickup-modal__row select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.clickup-modal__row select:disabled {
+  background: #f5f5f5;
+  color: #888;
+}
+
+.clickup-modal__token-row {
+  display: flex;
+  gap: 8px;
+}
+
+.clickup-modal__token-row input {
+  flex: 1;
+}
+
+.clickup-modal__token-row button {
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: #7c85f5;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.clickup-modal__token-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.clickup-modal__hint {
+  font-size: 11px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.clickup-modal__error {
+  background: #fff0f0;
+  border: 1px solid #f5c2c7;
+  color: #c33;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.clickup-modal__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.clickup-modal__actions button {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #444;
+}
+
+.clickup-modal__actions button.clickup-modal__save {
+  background: #7c85f5;
+  color: #fff;
+  border-color: #7c85f5;
+}
+
+.clickup-modal__actions button.clickup-modal__save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .app__body {
   display: flex;
   flex: 1;

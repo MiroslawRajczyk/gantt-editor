@@ -12,4 +12,14 @@ export default defineConfig({
       'frappe-gantt': path.resolve(__dirname, 'src/lib/frappe-gantt/index.js'),
     },
   },
+  server: {
+    proxy: {
+      '/clickup': {
+        target: 'https://api.clickup.com/api/v2',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (p) => p.replace(/^\/clickup/, ''),
+      },
+    },
+  },
 })

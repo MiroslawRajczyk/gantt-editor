@@ -1,10 +1,13 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTasks } from './hooks/useTasks'
+import { useClickUpConfig } from './hooks/useClickUpConfig'
 import { TaskPanel } from './components/TaskPanel'
 import { GanttPanel } from './components/GanttPanel'
 import { Divider } from './components/Divider'
+import { ClickUpSettings } from './components/ClickUpSettings'
 import { getAllSuccessors } from './utils'
-import type { GanttTask } from './types'
+import { syncWithClickUp } from './lib/sync'
+import type { GanttTask, SyncReport } from './types'
 import './App.css'
 
 const MIN_PCT = 15
@@ -12,12 +15,41 @@ const MAX_PCT = 70
 const DEFAULT_PCT = 30
 
 export default function App() {
-  const { tasks, addTask, removeTask, updateTask } = useTasks()
+  const { tasks, setTasks, addTask, removeTask, updateTask } = useTasks()
+  const { config, setConfig } = useClickUpConfig()
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [lastReport, setLastReport] = useState<SyncReport | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const taskListRef = useRef<HTMLDivElement>(null)
   const isSyncingRef = useRef(false)
   const lhsFocusIdRef = useRef<string | null>(null)
+
+  const onSync = useCallback(async () => {
+    if (!config?.token || !config.listId) return
+    setSyncing(true)
+    const t0 = performance.now()
+    try {
+      const report = await syncWithClickUp(config, tasks, setTasks)
+      setLastReport(report)
+      setConfig({ ...config, lastSyncAt: new Date().toISOString() })
+    } catch (e) {
+      setLastReport({
+        added: 0,
+        updatedFromRemote: 0,
+        pushedToRemote: 0,
+        deletedLocal: 0,
+        createdRemote: 0,
+        depsAdded: 0,
+        depsAddedFromRemote: 0,
+        errors: [String(e)],
+        durationMs: performance.now() - t0,
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }, [config, tasks, setTasks, setConfig])
 
   const handleResize = useCallback((deltaX: number) => {
     const containerWidth = containerRef.current?.offsetWidth ?? window.innerWidth
@@ -88,10 +120,46 @@ export default function App() {
     listEl.addEventListener('scroll', syncListToGantt)
   }, [])
 
+  const reportSummary = (r: SyncReport): string =>
+    r.errors.length === 0
+      ? `+${r.added} from CU · ${r.createdRemote} → CU · ${r.updatedFromRemote} pulled · ${r.pushedToRemote} pushed · ${r.deletedLocal} removed · ${r.depsAdded + r.depsAddedFromRemote} deps`
+      : `Sync errors: ${r.errors[0]}${r.errors.length > 1 ? ` (+${r.errors.length - 1} more)` : ''}`
+
   return (
     <div className="app">
       <header className="app__header">
         <span className="app__logo">Gantt Editor</span>
+        <div className="app__header-spacer" />
+        {lastReport && (
+          <span
+            className={`app__sync-report${lastReport.errors.length ? ' app__sync-report--err' : ''}`}
+            title={lastReport.errors.join('\n') || undefined}
+          >
+            {reportSummary(lastReport)}
+          </span>
+        )}
+        {config?.lastSyncAt && (
+          <span className="app__sync-stamp">
+            Last sync: {new Date(config.lastSyncAt).toLocaleTimeString()}
+          </span>
+        )}
+        {config?.token && config.listId && (
+          <button
+            className="app__sync-btn"
+            onClick={onSync}
+            disabled={syncing}
+            type="button"
+          >
+            {syncing ? 'Syncing…' : 'Sync now'}
+          </button>
+        )}
+        <button
+          className="app__settings-btn"
+          onClick={() => setSettingsOpen(true)}
+          type="button"
+        >
+          ClickUp
+        </button>
       </header>
       <div className="app__body" ref={containerRef}>
         <div className="app__panel app__panel--left" style={{ width: `${leftPct}%` }}>
@@ -114,6 +182,15 @@ export default function App() {
           />
         </div>
       </div>
+      <ClickUpSettings
+        open={settingsOpen}
+        config={config}
+        onSave={(next) => {
+          setConfig(next)
+          setSettingsOpen(false)
+        }}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   )
 }
