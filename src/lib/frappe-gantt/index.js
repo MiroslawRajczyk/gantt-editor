@@ -217,6 +217,9 @@ export default class Gantt {
                 return task;
             })
             .filter((t) => t);
+        this.tasks.forEach((task, i) => {
+            task._index = i;
+        });
         this.setup_dependencies();
     }
 
@@ -926,11 +929,10 @@ export default class Gantt {
                 .map((task_id) => {
                     const dependency = this.get_task(task_id);
                     if (!dependency) return;
-                    const arrow = new Arrow(
-                        this,
-                        this.bars[dependency._index], // from_task
-                        this.bars[task._index], // to_task
-                    );
+                    const fromBar = this.bars[dependency._index];
+                    const toBar = this.bars[task._index];
+                    if (!fromBar || !toBar) return;
+                    const arrow = new Arrow(this, fromBar, toBar);
                     this.layers.arrow.appendChild(arrow.element);
                     return arrow;
                 })
