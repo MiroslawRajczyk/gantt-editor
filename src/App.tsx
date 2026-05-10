@@ -17,6 +17,7 @@ export default function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const taskListRef = useRef<HTMLDivElement>(null)
   const isSyncingRef = useRef(false)
+  const lhsFocusIdRef = useRef<string | null>(null)
 
   const handleResize = useCallback((deltaX: number) => {
     const containerWidth = containerRef.current?.offsetWidth ?? window.innerWidth
@@ -28,6 +29,7 @@ export default function App() {
 
   const handleTaskUpdate = useCallback(
     (id: string, patch: Partial<GanttTask>) => {
+      lhsFocusIdRef.current = id
       updateTask(id, patch)
       if ('end' in patch && patch.end !== undefined) {
         const prev = tasks.find(t => t.id === id)
@@ -108,6 +110,7 @@ export default function App() {
             onDateChange={(id, start, end) => updateTask(id, { start, end })}
             onContainerReady={handleContainerReady}
             onToggleDependency={handleToggleDependency}
+            focusIdRef={lhsFocusIdRef}
           />
         </div>
       </div>

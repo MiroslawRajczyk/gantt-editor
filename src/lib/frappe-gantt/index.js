@@ -338,6 +338,39 @@ export default class Gantt {
                     this.config.unit,
                 );
             }
+        } else {
+            // On refresh: grow existing bounds only when tasks fall outside
+            if (!this.options.infinite_padding) {
+                if (!this.gantt_start || gantt_start < this.gantt_start) {
+                    const pad = Array.isArray(this.config.view_mode.padding)
+                        ? this.config.view_mode.padding[0]
+                        : this.config.view_mode.padding;
+                    const { duration, scale } = date_utils.parse_duration(pad);
+                    this.gantt_start = date_utils.add(gantt_start, -duration, scale);
+                }
+                if (!this.gantt_end || gantt_end > this.gantt_end) {
+                    const pad = Array.isArray(this.config.view_mode.padding)
+                        ? (this.config.view_mode.padding[1] ?? this.config.view_mode.padding[0])
+                        : this.config.view_mode.padding;
+                    const { duration, scale } = date_utils.parse_duration(pad);
+                    this.gantt_end = date_utils.add(gantt_end, duration, scale);
+                }
+            } else {
+                if (!this.gantt_start || gantt_start < this.gantt_start) {
+                    this.gantt_start = date_utils.add(
+                        gantt_start,
+                        -this.config.extend_by_units * 3,
+                        this.config.unit,
+                    );
+                }
+                if (!this.gantt_end || gantt_end > this.gantt_end) {
+                    this.gantt_end = date_utils.add(
+                        gantt_end,
+                        this.config.extend_by_units * 3,
+                        this.config.unit,
+                    );
+                }
+            }
         }
         this.config.date_format =
             this.config.view_mode.date_format || this.options.date_format;

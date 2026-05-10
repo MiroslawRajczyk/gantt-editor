@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import FrappeGantt from 'frappe-gantt'
 import type FrappeGanttNS from 'frappe-gantt'
 import type { GanttTask } from '../types'
@@ -13,6 +13,7 @@ interface Props {
   onDateChange: (id: string, start: Date, end: Date) => void
   onContainerReady: (el: HTMLElement) => void
   onToggleDependency: (sourceId: string, targetId: string) => void
+  focusIdRef?: React.MutableRefObject<string | null>
 }
 
 export function GanttPanel({
@@ -20,6 +21,7 @@ export function GanttPanel({
   onDateChange,
   onContainerReady,
   onToggleDependency,
+  focusIdRef,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const ganttRef = useRef<InstanceType<typeof FrappeGantt> | null>(null)
@@ -127,11 +129,44 @@ export function GanttPanel({
       // The first render after mouseup (bar_being_dragged = null) does the refresh.
       if ((ganttRef.current as any)?.bar_being_dragged) return
 
+      const gantt = ganttRef.current as any
       const gc = containerRef.current.querySelector('.gantt-container') as HTMLElement | null
+      const oldGanttStart = gantt.gantt_start ? new Date(gantt.gantt_start) : null
       const sl = gc?.scrollLeft ?? 0
       const st = gc?.scrollTop ?? 0
+
       ganttRef.current.refresh(frappeTasks)
-      if (gc) { gc.scrollLeft = sl; gc.scrollTop = st }
+
+      if (gc) {
+        let newSl = sl
+        // If left bound extended, compensate so the visible area doesn't jump
+        if (oldGanttStart && gantt.gantt_start < oldGanttStart) {
+          const colsAdded = (gantt.dates as Date[]).findIndex(
+            (d: Date) => d >= oldGanttStart,
+          )
+          if (colsAdded > 0) newSl = sl + colsAdded * gantt.config.column_width
+        }
+
+        // If a LHS edit triggered this refresh, scroll to show the edited task
+        const fid = focusIdRef?.current
+        if (fid) {
+          focusIdRef!.current = null
+          const focusBar = (gantt.bars as any[])?.find(
+            (b: any) => b.task?.id === fid,
+          )
+          if (focusBar) {
+            const taskX: number = focusBar.x
+            const viewLeft = newSl
+            const viewRight = newSl + gc.clientWidth
+            if (taskX < viewLeft || taskX + (focusBar.width ?? 0) > viewRight) {
+              newSl = Math.max(0, taskX - gc.clientWidth / 3)
+            }
+          }
+        }
+
+        gc.scrollLeft = newSl
+        gc.scrollTop = st
+      }
     } else {
       const panelHeight = containerRef.current.clientHeight
 
