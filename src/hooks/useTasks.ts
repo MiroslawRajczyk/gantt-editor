@@ -71,5 +71,15 @@ export function useTasks() {
     setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)))
   }
 
-  return { tasks, setTasks, addTask, removeTask, updateTask }
+  function reorderTask(fromIndex: number, toIndex: number) {
+    setTasks(prev => {
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) return prev
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+  }
+
+  return { tasks, setTasks, addTask, removeTask, updateTask, reorderTask }
 }

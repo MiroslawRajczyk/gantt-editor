@@ -15,7 +15,7 @@ const MAX_PCT = 70
 const DEFAULT_PCT = 30
 
 export default function App() {
-  const { tasks, setTasks, addTask, removeTask, updateTask } = useTasks()
+  const { tasks, setTasks, addTask, removeTask, updateTask, reorderTask } = useTasks()
   const { config, setConfig } = useClickUpConfig()
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -168,6 +168,7 @@ export default function App() {
             onAdd={addTask}
             onRemove={removeTask}
             onUpdate={handleTaskUpdate}
+            onReorder={reorderTask}
             listRef={taskListRef}
           />
         </div>

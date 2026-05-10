@@ -367,6 +367,29 @@
   background: #fff0f0;
 }
 
+.task-row__grip {
+  cursor: grab;
+  color: #ccc;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  user-select: none;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.task-row:hover .task-row__grip {
+  color: #aaa;
+}
+
+.task-row__grip:active {
+  cursor: grabbing;
+}
+
+.task-row--drag-over {
+  border-top: 2px solid #7c85f5;
+}
+
 /* Gantt Panel */
 .gantt-panel {
   flex: 1;

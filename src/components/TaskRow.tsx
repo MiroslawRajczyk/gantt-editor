@@ -4,15 +4,21 @@ import { GANTT_ROW_HEIGHT } from '../constants'
 
 interface Props {
   task: GanttTask
+  index: number
   onUpdate: (patch: Partial<GanttTask>) => void
   onRemove: () => void
+  onDragStart: (index: number) => void
+  onDragOver: (e: React.DragEvent, index: number) => void
+  onDrop: (index: number) => void
+  onDragEnd: () => void
+  isDragOver: boolean
 }
 
 function toDateInput(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
-export function TaskRow({ task, onUpdate, onRemove }: Props) {
+export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(task.name)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -21,7 +27,6 @@ export function TaskRow({ task, onUpdate, onRemove }: Props) {
     if (editing) inputRef.current?.focus()
   }, [editing])
 
-  // Keep draft in sync if name changes externally
   useEffect(() => {
     if (!editing) setDraft(task.name)
   }, [task.name, editing])
@@ -46,7 +51,17 @@ export function TaskRow({ task, onUpdate, onRemove }: Props) {
   }
 
   return (
-    <div className="task-row" style={{ height: GANTT_ROW_HEIGHT }}>
+    <div
+      className={`task-row${isDragOver ? ' task-row--drag-over' : ''}`}
+      style={{ height: GANTT_ROW_HEIGHT }}
+      draggable
+      onDragStart={() => onDragStart(index)}
+      onDragOver={e => onDragOver(e, index)}
+      onDrop={() => onDrop(index)}
+      onDragEnd={onDragEnd}
+    >
+      <span className="task-row__grip" aria-hidden="true">⠿</span>
+
       <div className="task-row__name">
         {editing ? (
           <input
