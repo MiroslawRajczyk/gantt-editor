@@ -9,12 +9,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // frappe-gantt's exports map doesn't expose the CSS sub-path, so we
-      // bypass it with a direct alias to the dist file.
-      'frappe-gantt-css': path.resolve(
-        __dirname,
-        'node_modules/frappe-gantt/dist/frappe-gantt.css',
-      ),
+      'frappe-gantt': path.resolve(__dirname, 'src/lib/frappe-gantt/index.js'),
     },
   },
 })

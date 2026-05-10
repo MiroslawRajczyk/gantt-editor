@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import FrappeGantt from 'frappe-gantt'
 import type FrappeGanttNS from 'frappe-gantt'
-import 'frappe-gantt-css'
 import type { GanttTask } from '../types'
 
 function toDateStr(d: Date): string {
@@ -155,17 +154,25 @@ export function GanttPanel({
           if (!task.id) return
           const allTasks = tasksRef.current
           const prev = allTasks.find(t => t.id === task.id)
-          const deltaMs = prev ? start.getTime() - prev.start.getTime() : 0
           onDateChangeRef.current(task.id, start, end)
-          if (deltaMs !== 0) {
-            for (const sid of getAllSuccessors(task.id, allTasks)) {
-              const s = allTasks.find(t => t.id === sid)
-              if (s) {
-                onDateChangeRef.current(
-                  sid,
-                  new Date(s.start.getTime() + deltaMs),
-                  new Date(s.end.getTime() + deltaMs),
-                )
+          // Only propagate on a pure drag (duration unchanged within 2s tolerance).
+          // Resizing one edge changes the duration by at least a full day, so
+          // the 2s window safely excludes the frappe-gantt -1s end adjustment.
+          if (prev) {
+            const deltaMs = start.getTime() - prev.start.getTime()
+            const prevDuration = prev.end.getTime() - prev.start.getTime()
+            const newDuration = end.getTime() - start.getTime()
+            const isDrag = deltaMs !== 0 && Math.abs(newDuration - prevDuration) < 2000
+            if (isDrag) {
+              for (const sid of getAllSuccessors(task.id, allTasks)) {
+                const s = allTasks.find(t => t.id === sid)
+                if (s) {
+                  onDateChangeRef.current(
+                    sid,
+                    new Date(s.start.getTime() + deltaMs),
+                    new Date(s.end.getTime() + deltaMs),
+                  )
+                }
               }
             }
           }
