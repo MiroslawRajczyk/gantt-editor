@@ -136,6 +136,9 @@ export function GanttPanel({
         popup: false,
         on_date_change: (task, start, end) => {
           if (!task.id) return
+          // Suppress intermediate drag updates — bar_being_dragged is truthy while
+          // dragging. Only commit to React state on the final mouseup call.
+          if ((ganttRef.current as any)?.bar_being_dragged) return
           const allTasks = tasksRef.current
           const prev = allTasks.find(t => t.id === task.id)
           onDateChangeRef.current(task.id, start, end)

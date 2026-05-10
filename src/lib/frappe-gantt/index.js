@@ -1104,8 +1104,61 @@ export default class Gantt {
         let bars = []; // instanceof Bar
         this.bar_being_dragged = null;
 
+        const EDGE_ZONE = 60;
+        const EDGE_SPEED = 10;
+        let edgeScrollRaf = null;
+        let lastClientX = 0;
+
         const action_in_progress = () =>
             is_dragging || is_resizing_left || is_resizing_right;
+
+        const applyBarPositions = () => {
+            const dx = lastClientX - x_on_start;
+            bars.forEach((bar) => {
+                const $bar = bar.$bar;
+                $bar.finaldx = this.get_snap_position(dx, $bar.ox);
+                this.hide_popup();
+                if (is_resizing_left) {
+                    if (parent_bar_id === bar.task.id) {
+                        bar.update_bar_position({
+                            x: $bar.ox + $bar.finaldx,
+                            width: $bar.owidth - $bar.finaldx,
+                        });
+                    } else {
+                        bar.update_bar_position({ x: $bar.ox + $bar.finaldx });
+                    }
+                } else if (is_resizing_right) {
+                    if (parent_bar_id === bar.task.id) {
+                        bar.update_bar_position({ width: $bar.owidth + $bar.finaldx });
+                    }
+                } else if (is_dragging && !this.options.readonly && !this.options.readonly_dates) {
+                    bar.update_bar_position({ x: $bar.ox + $bar.finaldx });
+                }
+            });
+        };
+
+        const stopEdgeScroll = () => {
+            if (edgeScrollRaf) {
+                cancelAnimationFrame(edgeScrollRaf);
+                edgeScrollRaf = null;
+            }
+        };
+
+        const startEdgeScroll = (direction) => {
+            stopEdgeScroll();
+            const tick = () => {
+                if (!action_in_progress()) { stopEdgeScroll(); return; }
+                const prev = this.$container.scrollLeft;
+                this.$container.scrollLeft += direction * EDGE_SPEED;
+                const delta = this.$container.scrollLeft - prev;
+                if (delta !== 0) {
+                    x_on_start -= delta;
+                    applyBarPositions();
+                }
+                edgeScrollRaf = requestAnimationFrame(tick);
+            };
+            edgeScrollRaf = requestAnimationFrame(tick);
+        };
 
         this.$svg.onclick = (e) => {
             if (e.target.classList.contains('grid-row')) this.unselect_all();
@@ -1115,7 +1168,7 @@ export default class Gantt {
         $.on(this.$svg, 'mousemove', '.bar-wrapper, .handle', (e) => {
             if (
                 this.bar_being_dragged === false &&
-                Math.abs((e.offsetX || e.layerX) - pos) > 10
+                Math.abs(e.clientX - pos) > 10
             )
                 this.bar_being_dragged = true;
         });
@@ -1138,7 +1191,8 @@ export default class Gantt {
 
             if (this.popup) this.popup.hide();
 
-            x_on_start = e.offsetX || e.layerX;
+            x_on_start = e.clientX;
+            lastClientX = e.clientX;
 
             parent_bar_id = bar_wrapper.getAttribute('data-id');
             let ids;
@@ -1303,43 +1357,24 @@ export default class Gantt {
 
         $.on(this.$svg, 'mousemove', (e) => {
             if (!action_in_progress()) return;
-            const dx = (e.offsetX || e.layerX) - x_on_start;
+            lastClientX = e.clientX;
+            applyBarPositions();
 
-            bars.forEach((bar) => {
-                const $bar = bar.$bar;
-                $bar.finaldx = this.get_snap_position(dx, $bar.ox);
-                this.hide_popup();
-                if (is_resizing_left) {
-                    if (parent_bar_id === bar.task.id) {
-                        bar.update_bar_position({
-                            x: $bar.ox + $bar.finaldx,
-                            width: $bar.owidth - $bar.finaldx,
-                        });
-                    } else {
-                        bar.update_bar_position({
-                            x: $bar.ox + $bar.finaldx,
-                        });
-                    }
-                } else if (is_resizing_right) {
-                    if (parent_bar_id === bar.task.id) {
-                        bar.update_bar_position({
-                            width: $bar.owidth + $bar.finaldx,
-                        });
-                    }
-                } else if (
-                    is_dragging &&
-                    !this.options.readonly &&
-                    !this.options.readonly_dates
-                ) {
-                    bar.update_bar_position({ x: $bar.ox + $bar.finaldx });
-                }
-            });
+            const rect = this.$container.getBoundingClientRect();
+            if (e.clientX < rect.left + EDGE_ZONE) {
+                startEdgeScroll(-1);
+            } else if (e.clientX > rect.right - EDGE_ZONE) {
+                startEdgeScroll(1);
+            } else {
+                stopEdgeScroll();
+            }
         });
 
         document.addEventListener('mouseup', () => {
             is_dragging = false;
             is_resizing_left = false;
             is_resizing_right = false;
+            stopEdgeScroll();
             this.$container
                 .querySelector('.visible')
                 ?.classList?.remove?.('visible');
