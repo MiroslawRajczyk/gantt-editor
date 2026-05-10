@@ -81,5 +81,9 @@ export function useTasks() {
     })
   }
 
-  return { tasks, setTasks, addTask, removeTask, updateTask, reorderTask }
+  function clearTasks() {
+    setTasks([])
+  }
+
+  return { tasks, setTasks, addTask, removeTask, updateTask, reorderTask, clearTasks }
 }

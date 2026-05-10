@@ -15,7 +15,7 @@ const MAX_PCT = 70
 const DEFAULT_PCT = 30
 
 export default function App() {
-  const { tasks, setTasks, addTask, removeTask, updateTask, reorderTask } = useTasks()
+  const { tasks, setTasks, addTask, removeTask, updateTask, reorderTask, clearTasks } = useTasks()
   const { config, setConfig } = useClickUpConfig()
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -166,6 +166,7 @@ export default function App() {
           <TaskPanel
             tasks={tasks}
             onAdd={addTask}
+            onClear={() => { if (confirm('Remove all tasks?')) clearTasks() }}
             onRemove={removeTask}
             onUpdate={handleTaskUpdate}
             onReorder={reorderTask}
