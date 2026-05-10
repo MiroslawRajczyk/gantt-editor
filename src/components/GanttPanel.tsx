@@ -2,26 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import FrappeGantt from 'frappe-gantt'
 import type FrappeGanttNS from 'frappe-gantt'
 import type { GanttTask } from '../types'
+import { getAllSuccessors } from '../utils'
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10)
-}
-
-function getAllSuccessors(taskId: string, allTasks: GanttTask[]): string[] {
-  const result: string[] = []
-  const queue = [taskId]
-  const visited = new Set<string>([taskId])
-  while (queue.length > 0) {
-    const current = queue.shift()!
-    for (const task of allTasks) {
-      if (task.dependencies?.includes(current) && !visited.has(task.id)) {
-        visited.add(task.id)
-        result.push(task.id)
-        queue.push(task.id)
-      }
-    }
-  }
-  return result
 }
 
 interface Props {
@@ -155,22 +139,26 @@ export function GanttPanel({
           const allTasks = tasksRef.current
           const prev = allTasks.find(t => t.id === task.id)
           onDateChangeRef.current(task.id, start, end)
-          // Only propagate on a pure drag (duration unchanged within 2s tolerance).
-          // Resizing one edge changes the duration by at least a full day, so
-          // the 2s window safely excludes the frappe-gantt -1s end adjustment.
           if (prev) {
-            const deltaMs = start.getTime() - prev.start.getTime()
+            const startDelta = start.getTime() - prev.start.getTime()
             const prevDuration = prev.end.getTime() - prev.start.getTime()
             const newDuration = end.getTime() - start.getTime()
-            const isDrag = deltaMs !== 0 && Math.abs(newDuration - prevDuration) < 2000
-            if (isDrag) {
+            const durationDelta = newDuration - prevDuration
+            // Pure drag: start shifted, duration unchanged (within 2s for frappe-gantt's -1s end artifact)
+            // Right-edge resize: start unchanged, end moved → durationDelta equals end delta
+            // Left-edge resize: start changed, duration also changed → both conditions false, no propagation
+            const propagateDelta =
+              startDelta !== 0 && Math.abs(durationDelta) < 2000 ? startDelta :
+              startDelta === 0 && Math.abs(durationDelta) >= 2000 ? durationDelta :
+              0
+            if (propagateDelta !== 0) {
               for (const sid of getAllSuccessors(task.id, allTasks)) {
                 const s = allTasks.find(t => t.id === sid)
                 if (s) {
                   onDateChangeRef.current(
                     sid,
-                    new Date(s.start.getTime() + deltaMs),
-                    new Date(s.end.getTime() + deltaMs),
+                    new Date(s.start.getTime() + propagateDelta),
+                    new Date(s.end.getTime() + propagateDelta),
                   )
                 }
               }

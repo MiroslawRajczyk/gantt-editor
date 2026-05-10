@@ -3,6 +3,8 @@ import { useTasks } from './hooks/useTasks'
 import { TaskPanel } from './components/TaskPanel'
 import { GanttPanel } from './components/GanttPanel'
 import { Divider } from './components/Divider'
+import { getAllSuccessors } from './utils'
+import type { GanttTask } from './types'
 import './App.css'
 
 const MIN_PCT = 15
@@ -23,6 +25,30 @@ export default function App() {
       return Math.min(MAX_PCT, Math.max(MIN_PCT, newPct))
     })
   }, [])
+
+  const handleTaskUpdate = useCallback(
+    (id: string, patch: Partial<GanttTask>) => {
+      updateTask(id, patch)
+      if ('end' in patch && patch.end !== undefined) {
+        const prev = tasks.find(t => t.id === id)
+        if (prev) {
+          const delta = patch.end.getTime() - prev.end.getTime()
+          if (delta !== 0) {
+            for (const sid of getAllSuccessors(id, tasks)) {
+              const s = tasks.find(t => t.id === sid)
+              if (s) {
+                updateTask(sid, {
+                  start: new Date(s.start.getTime() + delta),
+                  end: new Date(s.end.getTime() + delta),
+                })
+              }
+            }
+          }
+        }
+      }
+    },
+    [tasks, updateTask],
+  )
 
   const handleToggleDependency = useCallback(
     (sourceId: string, targetId: string) => {
@@ -71,7 +97,7 @@ export default function App() {
             tasks={tasks}
             onAdd={addTask}
             onRemove={removeTask}
-            onUpdate={updateTask}
+            onUpdate={handleTaskUpdate}
             listRef={taskListRef}
           />
         </div>
