@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { GanttTask } from '../types'
+import type { Assignee, GanttTask } from '../types'
 
 const STORAGE_KEY = 'gantt-tasks'
 
@@ -18,9 +18,14 @@ function addDays(d: Date, n: number): Date {
 function deserialize(raw: string): GanttTask[] {
   const parsed = JSON.parse(raw) as Array<Record<string, unknown>>
   return parsed.map(t => ({
-    ...(t as Omit<GanttTask, 'start' | 'end'>),
+    ...(t as Omit<GanttTask, 'start' | 'end' | 'assignees'>),
     start: new Date(t.start as string),
     end: new Date(t.end as string),
+    assignees: Array.isArray(t.assignees)
+      ? (t.assignees as unknown[]).map((a): Assignee =>
+          typeof a === 'string' ? { id: -1, username: a } : (a as Assignee)
+        )
+      : undefined,
   }))
 }
 

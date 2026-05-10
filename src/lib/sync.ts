@@ -107,7 +107,7 @@ export async function syncWithClickUp(
     const remoteEnd = fromClickUpDate(r.due_date)
 
     const remotePriority = r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined
-    const remoteAssignees = r.assignees?.map(a => a.username)
+    const remoteAssignees = r.assignees?.map(a => ({ id: a.id, username: a.username }))
 
     if (remoteChangedSinceSync) {
       const fieldsChanged =
@@ -126,12 +126,20 @@ export async function syncWithClickUp(
       })
       if (fieldsChanged) report.updatedFromRemote++
     } else {
+      const localIds = new Set((l.assignees ?? []).map(a => a.id).filter(id => id !== -1))
+      const remoteIds = new Set((r.assignees ?? []).map(a => a.id))
+      const addIds = [...localIds].filter(id => !remoteIds.has(id))
+      const remIds = [...remoteIds].filter(id => !localIds.has(id))
+      const assigneesDiff = (addIds.length || remIds.length)
+        ? { assignees: { add: addIds, rem: remIds } }
+        : {}
       const localDiffersFromRemote =
         l.name !== r.name ||
         !sameDay(l.start, remoteStart) ||
         !sameDay(l.end, remoteEnd) ||
         l.priority !== remotePriority ||
-        (l.description ?? '') !== (r.description ?? '')
+        (l.description ?? '') !== (r.description ?? '') ||
+        addIds.length > 0 || remIds.length > 0
       if (localDiffersFromRemote) {
         try {
           await updateTask(token, r.id, {
@@ -142,19 +150,21 @@ export async function syncWithClickUp(
             due_date_time: false,
             ...(l.priority !== undefined ? { priority: l.priority } : {}),
             ...(l.description !== undefined ? { description: l.description } : {}),
+            ...assigneesDiff,
           })
           report.pushedToRemote++
         } catch (e) {
           report.errors.push(`updateTask(${r.id}): ${String(e)}`)
         }
       }
-      next.push({ ...l, status: r.status?.status, assignees: remoteAssignees })
+      next.push({ ...l, status: r.status?.status })
     }
   }
 
   // Phase 3 — create remote for unlinked
   for (const u of unlinked) {
     try {
+      const assigneeIds = (u.assignees ?? []).map(a => a.id).filter(id => id !== -1)
       const created = await createTask(token, listId, {
         name: u.name,
         start_date: toClickUpDate(u.start),
@@ -163,6 +173,7 @@ export async function syncWithClickUp(
         due_date_time: false,
         ...(u.priority !== undefined ? { priority: u.priority } : {}),
         ...(u.description !== undefined ? { description: u.description } : {}),
+        ...(assigneeIds.length ? { assignees: assigneeIds } : {}),
       })
       remoteById.set(created.id, created)
       next.push({ ...u, clickupId: created.id })
@@ -191,7 +202,7 @@ export async function syncWithClickUp(
       progress: 0,
       status: r.status?.status,
       priority: r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined,
-      assignees: r.assignees?.map(a => a.username),
+      assignees: r.assignees?.map(a => ({ id: a.id, username: a.username })),
       description: r.description,
     })
     report.added++

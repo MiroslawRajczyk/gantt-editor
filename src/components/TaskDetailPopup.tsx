@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import type { GanttTask } from '../types'
+import type { Assignee, GanttTask } from '../types'
+import { listTeamMembers, type TeamMember } from '../lib/clickup'
+import { AssigneePicker } from './AssigneePicker'
 
 interface Props {
   task: GanttTask
   allTasks: GanttTask[]
   onClose: () => void
   onUpdate: (patch: Partial<GanttTask>) => void
+  clickupToken?: string
+  clickupTeamId?: string
 }
 
 const PRIORITIES: Record<number, { label: string; color: string }> = {
@@ -90,9 +94,13 @@ function PriorityPill({ value, onChange }: { value: GanttTask['priority']; onCha
   )
 }
 
-export function TaskDetailPopup({ task, allTasks, onClose, onUpdate }: Props) {
+export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToken, clickupTeamId }: Props) {
   const [nameDraft, setNameDraft] = useState(task.name)
   const [descDraft, setDescDraft] = useState(task.description ?? '')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
     setNameDraft(task.name)
@@ -114,6 +122,37 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate }: Props) {
 
   const removeDep = (depId: string) => {
     onUpdate({ dependencies: (task.dependencies ?? []).filter(d => d !== depId) })
+  }
+
+  const openPicker = async () => {
+    setPickerOpen(true)
+    if (members.length === 0 && !membersLoading && !fetchError && clickupToken && clickupTeamId) {
+      setMembersLoading(true)
+      try {
+        setMembers(await listTeamMembers(clickupToken, clickupTeamId))
+        setFetchError(null)
+      } catch (e) {
+        setFetchError(String(e))
+      } finally {
+        setMembersLoading(false)
+      }
+    }
+  }
+
+  const toggleAssignee = (m: TeamMember) => {
+    const cur = task.assignees ?? []
+    const exists = cur.some(a => a.id === m.id)
+    onUpdate({
+      assignees: exists
+        ? cur.filter(a => a.id !== m.id)
+        : [...cur, { id: m.id, username: m.username }],
+    })
+  }
+
+  const removeAssignee = (a: Assignee) => {
+    onUpdate({
+      assignees: (task.assignees ?? []).filter(x => x.id !== a.id || x.username !== a.username),
+    })
   }
 
   const clickupUrl = task.clickupId ? `https://app.clickup.com/t/${task.clickupId}` : null
@@ -160,22 +199,44 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate }: Props) {
           {/* Properties grid */}
           <div className="tdp-props">
 
-            {/* Assignees (read-only from ClickUp) */}
-            {task.assignees && task.assignees.length > 0 && (
-              <>
-                <div className="tdp-label">Assignees</div>
-                <div className="tdp-value">
-                  {task.assignees.map(name => (
-                    <span key={name} className="tdp-assignee-chip" title={name}>
-                      <span className="tdp-av" style={{ background: avatarColor(name) }}>
-                        {getInitials(name)}
-                      </span>
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
+            {/* Assignees */}
+            <div className="tdp-label">Assignees</div>
+            <div className="tdp-value tdp-assignees-wrap">
+              {(task.assignees ?? []).map(a => (
+                <span key={a.id !== -1 ? a.id : a.username} className="tdp-assignee-chip">
+                  <span className="tdp-av" style={{ background: avatarColor(a.username) }}>
+                    {getInitials(a.username)}
+                  </span>
+                  {a.username}
+                  <span
+                    className="tdp-assignee-x"
+                    onClick={e => { e.stopPropagation(); removeAssignee(a) }}
+                    title="Remove assignee"
+                  >
+                    ×
+                  </span>
+                </span>
+              ))}
+              {clickupToken && (
+                <button
+                  type="button"
+                  className="tdp-add-assignee-btn"
+                  onClick={e => { e.stopPropagation(); openPicker() }}
+                >
+                  + Add
+                </button>
+              )}
+              {pickerOpen && (
+                <AssigneePicker
+                  members={members}
+                  loading={membersLoading}
+                  error={fetchError}
+                  assigned={task.assignees ?? []}
+                  onToggle={toggleAssignee}
+                  onClose={() => setPickerOpen(false)}
+                />
+              )}
+            </div>
 
             {/* Dates */}
             <div className="tdp-label">Dates</div>

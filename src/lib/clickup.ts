@@ -29,8 +29,15 @@ export interface RemoteTask {
   dependencies: Array<{ task_id: string; depends_on: string; type: number }>
   status?: { status: string; color?: string }
   priority?: { orderindex?: string }
-  assignees?: Array<{ username: string }>
+  assignees?: Array<{ id: number; username: string }>
   description?: string
+}
+
+export interface TeamMember {
+  id: number
+  username: string
+  email: string
+  profilePicture?: string
 }
 
 export interface CreateTaskBody {
@@ -41,6 +48,11 @@ export interface CreateTaskBody {
   due_date_time?: boolean
   priority?: number
   description?: string
+  assignees?: number[]
+}
+
+export interface UpdateTaskBody extends Omit<CreateTaskBody, 'assignees'> {
+  assignees?: { add?: number[]; rem?: number[] }
 }
 
 export class ClickUpError extends Error {
@@ -133,12 +145,18 @@ export async function createTask(
 export async function updateTask(
   token: string,
   taskId: string,
-  body: Partial<CreateTaskBody>,
+  body: Partial<UpdateTaskBody>,
 ): Promise<RemoteTask> {
   return request<RemoteTask>(token, `/task/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify(body),
   })
+}
+
+export async function listTeamMembers(token: string, teamId: string): Promise<TeamMember[]> {
+  const r = await request<{ teams: Array<{ id: string; members: Array<{ user: TeamMember }> }> }>(token, '/team')
+  const team = r.teams.find(t => t.id === teamId)
+  return team?.members.map(m => m.user) ?? []
 }
 
 export async function addDependency(

@@ -1,3 +1,8 @@
+export interface Assignee {
+  id: number
+  username: string
+}
+
 export interface GanttTask {
   id: string
   name: string
@@ -8,7 +13,7 @@ export interface GanttTask {
   clickupId?: string
   status?: string
   priority?: 1 | 2 | 3 | 4
-  assignees?: string[]
+  assignees?: Assignee[]
   description?: string
 }
 
