@@ -1,7 +1,3 @@
-The file doesn't exist at that path — this is an inline task. I'll output the fixed compressed file directly with all four corrections applied.
-
----
-
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -19,6 +15,9 @@ docker run --rm -v /home/igor/gantt-editor2:/work node:20-alpine sh -c "cd /work
 
 # Example: add a package
 docker run --rm -v /home/igor/gantt-editor2:/work node:20-alpine sh -c "cd /work && npm install <pkg>"
+
+# Type-check only (no emit)
+docker run --rm -v /home/igor/gantt-editor2:/work node:20-alpine sh -c "cd /work && npx tsc --noEmit"
 ```
 
 App served at **http://localhost:3000**.
@@ -29,7 +28,7 @@ React 18 + TypeScript + Vite frontend, static files via nginx, multi-stage Docke
 
 **Split-panel layout** (`App.tsx`): left panel (task list) + right panel (Gantt chart) split by draggable `Divider`. Panel widths stored as percentage (15–70%).
 
-**Core type** (`src/types.ts`): `GanttTask` has `id`, `name`, `start: Date`, `end: Date`, `progress: number` (in data model, not shown in chart), `dependencies?: string[]` (predecessor *local* ids), `clickupId?: string` (set when task linked to ClickUp).
+**Core type** (`src/types.ts`): `GanttTask` has `id`, `name`, `start: Date`, `end: Date`, `progress: number` (in data model, not shown in chart), `dependencies?: string[]` (predecessor *local* ids), `clickupId?: string` (set when task linked to ClickUp), and ClickUp-synced optional fields: `status?: string`, `priority?: 1|2|3|4`, `assignees?: string[]`, `description?: string`.
 
 **State and persistence** (`hooks/useTasks.ts`): all tasks in single `useState` array, persisted to `localStorage` under key `'gantt-tasks'`. First load creates example task. `updateTask` uses functional `setState` form so sequential calls compose correctly (React 18 batches).
 
@@ -52,7 +51,11 @@ Local fork bugs fixed:
 
 **Refresh without scroll reset** (`GanttPanel.tsx`): every `gantt.refresh()` saves and restores `.gantt-container` scroll position to prevent jumping on React re-renders.
 
-**TaskRow** (`components/TaskRow.tsx`): inline name editing (click to edit, Enter/Blur to commit, Escape to cancel). Date inputs clamp other date to prevent start > end. Row height fixed to `GANTT_ROW_HEIGHT` for gantt alignment.
+**TaskRow** (`components/TaskRow.tsx`): inline name editing (click to edit, Enter/Blur to commit, Escape to cancel). Date inputs clamp other date to prevent start > end. Row height fixed to `GANTT_ROW_HEIGHT` for gantt alignment. `⤢` icon button (visible on hover) opens `TaskDetailPopup`.
+
+**TaskDetailPopup** (`components/TaskDetailPopup.tsx`): centered modal opened from the `⤢` button on each task row. State in `App.tsx` (`detailTaskId`). Shows: task ID badge, ClickUp status badge (read-only), ↗ link to ClickUp if `clickupId` set, priority pill dropdown (1=Urgent/2=High/3=Normal/4=Low), editable name, assignee chips (read-only, from ClickUp), date pickers, dependency chips with `×` remove, description textarea. No progress bar.
+
+**CSS** (`src/App.css`): CSS custom properties defined in `:root` at top of file — `--accent`, `--border`, `--surface-*`, `--text-*`, `--radius-*`, `--shadow-*`. All popup styles use these vars. Existing non-popup styles use hardcoded colors for historical reasons.
 
 ## ClickUp two-way sync
 
@@ -66,10 +69,12 @@ App talks to ClickUp REST API directly from browser. No backend — all sync log
 
 **API client** (`src/lib/clickup.ts`): pure functions over `fetch('/clickup/...')`. Tokens passed as first arg; nothing module-scoped. Throws `ClickUpError` (status + body) on non-2xx so callers get ClickUp's `{err, ECODE}` payload. `toClickUpDate`/`fromClickUpDate` translate between JS `Date` and ClickUp's "ms since epoch as STRING". `getAllTasks` paginates until page returns < 100 tasks. Create/update bodies set `start_date_time: false`/`due_date_time: false` for date-only model.
 
-**Sync engine** (`src/lib/sync.ts`, `syncWithClickUp`): six phases on manual "Sync now". (1) Fetch all remote tasks — fatal on failure. (2) Each linked local task with remote match: compare `r.date_updated` to `config.lastSyncAt` — remote changed since last sync → ClickUp wins, overwrite local `name`/`start`/`end`; else push local up via PUT. Linked locals whose remote vanished are dropped. (3) Create remote tasks for local-only rows (no `clickupId`), capture returned id. (4) Synthesize local rows for remote-only tasks (fresh UUID, sets `clickupId`). (5) Dependencies additive union: local-not-remote edges POSTed up, remote-not-local added locally; final deps = union. (6) Bulk `setTasks(next)` — single render. Caller (`App.tsx` `onSync`) updates `lastSyncAt`.
+**Sync engine** (`src/lib/sync.ts`, `syncWithClickUp`): six phases on manual "Sync now". (1) Fetch all remote tasks — fatal on failure. (2) Each linked local task with remote match: compare `r.date_updated` to `config.lastSyncAt` — remote changed since last sync → ClickUp wins, overwrite local `name`/`start`/`end`/`status`/`priority`/`assignees`/`description`; else push local up via PUT (pushes `name`, `start`/`end`, `priority`, `description`). Linked locals whose remote vanished are dropped. (3) Create remote tasks for local-only rows (no `clickupId`), capture returned id, include `priority`/`description` in create body. (4) Synthesize local rows for remote-only tasks (fresh UUID, sets `clickupId`, copies all synced fields). (5) Dependencies additive union: local-not-remote edges POSTed up, remote-not-local added locally; final deps = union. (6) Bulk `setTasks(next)` — single render. Caller (`App.tsx` `onSync`) updates `lastSyncAt`.
 
 **Conflict policy**: ClickUp wins only when its `date_updated` postdates last sync; otherwise local propagates up. Effectively two-way for common case where only one side edited between syncs.
 
-**v1 limitations** (noted in plan / sync.ts): no baseline tracking → dependency *removals* don't propagate either direction (remove on both sides manually); local delete does not delete remote (`deleteTask` intentionally unexposed); no rate-limit backoff (ClickUp free tier ~100 req/min — surface 429s, retry manually); no realtime/webhook/auto-poll. Subtasks, hierarchy, custom fields, statuses, assignees, time tracking, tags, `progress` not synced.
+**Synced fields**: `name`, `start`/`end` dates, `dependencies`, `priority` (push+pull; ClickUp int 1–4), `description` (push+pull). `status` and `assignees` pulled from ClickUp (read-only in UI — status is list-specific, assignees require member IDs to push).
+
+**v1 limitations**: no baseline tracking → dependency *removals* don't propagate either direction (remove on both sides manually); local delete does not delete remote (`deleteTask` intentionally unexposed); no rate-limit backoff (ClickUp free tier ~100 req/min — surface 429s, retry manually); no realtime/webhook/auto-poll. Subtasks, comments, attachments, time tracking, tags, `progress` not synced.
 
 **Hook contract** (`hooks/useTasks.ts`): raw `useState` setter exposed as `setTasks` so `syncWithClickUp` does single bulk replacement. Persistence `useEffect` watches `tasks`, writes `localStorage['gantt-tasks']`; bulk replacement round-trips through JSON serialize/deserialize cleanly (dates → ISO → Date).

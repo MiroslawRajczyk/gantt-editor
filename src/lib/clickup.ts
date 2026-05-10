@@ -27,6 +27,10 @@ export interface RemoteTask {
   due_date: string | null
   date_updated: string
   dependencies: Array<{ task_id: string; depends_on: string; type: number }>
+  status?: { status: string; color?: string }
+  priority?: { orderindex?: string }
+  assignees?: Array<{ username: string }>
+  description?: string
 }
 
 export interface CreateTaskBody {
@@ -35,6 +39,8 @@ export interface CreateTaskBody {
   due_date?: string
   start_date_time?: boolean
   due_date_time?: boolean
+  priority?: number
+  description?: string
 }
 
 export class ClickUpError extends Error {

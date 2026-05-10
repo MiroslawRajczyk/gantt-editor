@@ -5,6 +5,7 @@ import { TaskPanel } from './components/TaskPanel'
 import { GanttPanel } from './components/GanttPanel'
 import { Divider } from './components/Divider'
 import { ClickUpSettings } from './components/ClickUpSettings'
+import { TaskDetailPopup } from './components/TaskDetailPopup'
 import { getAllSuccessors } from './utils'
 import { syncWithClickUp } from './lib/sync'
 import type { GanttTask, SyncReport } from './types'
@@ -19,6 +20,7 @@ export default function App() {
   const { config, setConfig } = useClickUpConfig()
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [lastReport, setLastReport] = useState<SyncReport | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -170,6 +172,7 @@ export default function App() {
             onRemove={removeTask}
             onUpdate={handleTaskUpdate}
             onReorder={reorderTask}
+            onOpenDetail={(id) => setDetailTaskId(id)}
             listRef={taskListRef}
           />
         </div>
@@ -193,6 +196,17 @@ export default function App() {
         }}
         onClose={() => setSettingsOpen(false)}
       />
+      {detailTaskId && (() => {
+        const t = tasks.find(task => task.id === detailTaskId)
+        return t ? (
+          <TaskDetailPopup
+            task={t}
+            allTasks={tasks}
+            onClose={() => setDetailTaskId(null)}
+            onUpdate={patch => handleTaskUpdate(detailTaskId, patch)}
+          />
+        ) : null
+      })()}
     </div>
   )
 }

@@ -11,10 +11,11 @@ interface Props {
   onRemove: (id: string) => void
   onUpdate: (id: string, patch: Partial<GanttTask>) => void
   onReorder: (fromIndex: number, toIndex: number) => void
+  onOpenDetail: (id: string) => void
   listRef: RefObject<HTMLDivElement>
 }
 
-export function TaskPanel({ tasks, onAdd, onClear, onRemove, onUpdate, onReorder, listRef }: Props) {
+export function TaskPanel({ tasks, onAdd, onClear, onRemove, onUpdate, onReorder, onOpenDetail, listRef }: Props) {
   const dragIndexRef = useRef<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
@@ -61,6 +62,7 @@ export function TaskPanel({ tasks, onAdd, onClear, onRemove, onUpdate, onReorder
             index={idx}
             onUpdate={patch => onUpdate(task.id, patch)}
             onRemove={() => onRemove(task.id)}
+            onOpenDetail={() => onOpenDetail(task.id)}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDrop={handleDrop}

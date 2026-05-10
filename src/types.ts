@@ -6,6 +6,10 @@ export interface GanttTask {
   progress: number
   dependencies?: string[]
   clickupId?: string
+  status?: string
+  priority?: 1 | 2 | 3 | 4
+  assignees?: string[]
+  description?: string
 }
 
 export interface ClickUpConfig {

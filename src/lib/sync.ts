@@ -106,6 +106,9 @@ export async function syncWithClickUp(
     const remoteStart = fromClickUpDate(r.start_date)
     const remoteEnd = fromClickUpDate(r.due_date)
 
+    const remotePriority = r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined
+    const remoteAssignees = r.assignees?.map(a => a.username)
+
     if (remoteChangedSinceSync) {
       const fieldsChanged =
         l.name !== r.name ||
@@ -116,13 +119,19 @@ export async function syncWithClickUp(
         name: r.name,
         start: remoteStart ?? l.start,
         end: remoteEnd ?? l.end,
+        status: r.status?.status,
+        priority: remotePriority,
+        assignees: remoteAssignees,
+        description: r.description ?? l.description,
       })
       if (fieldsChanged) report.updatedFromRemote++
     } else {
       const localDiffersFromRemote =
         l.name !== r.name ||
         !sameDay(l.start, remoteStart) ||
-        !sameDay(l.end, remoteEnd)
+        !sameDay(l.end, remoteEnd) ||
+        l.priority !== remotePriority ||
+        (l.description ?? '') !== (r.description ?? '')
       if (localDiffersFromRemote) {
         try {
           await updateTask(token, r.id, {
@@ -131,13 +140,15 @@ export async function syncWithClickUp(
             due_date: toClickUpDate(l.end),
             start_date_time: false,
             due_date_time: false,
+            ...(l.priority !== undefined ? { priority: l.priority } : {}),
+            ...(l.description !== undefined ? { description: l.description } : {}),
           })
           report.pushedToRemote++
         } catch (e) {
           report.errors.push(`updateTask(${r.id}): ${String(e)}`)
         }
       }
-      next.push({ ...l })
+      next.push({ ...l, status: r.status?.status, assignees: remoteAssignees })
     }
   }
 
@@ -150,6 +161,8 @@ export async function syncWithClickUp(
         due_date: toClickUpDate(u.end),
         start_date_time: false,
         due_date_time: false,
+        ...(u.priority !== undefined ? { priority: u.priority } : {}),
+        ...(u.description !== undefined ? { description: u.description } : {}),
       })
       remoteById.set(created.id, created)
       next.push({ ...u, clickupId: created.id })
@@ -176,6 +189,10 @@ export async function syncWithClickUp(
       start: fromClickUpDate(r.start_date) ?? today,
       end: fromClickUpDate(r.due_date) ?? addDays(today, 7),
       progress: 0,
+      status: r.status?.status,
+      priority: r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined,
+      assignees: r.assignees?.map(a => a.username),
+      description: r.description,
     })
     report.added++
   }

@@ -7,6 +7,7 @@ interface Props {
   index: number
   onUpdate: (patch: Partial<GanttTask>) => void
   onRemove: () => void
+  onOpenDetail: () => void
   onDragStart: (index: number) => void
   onDragOver: (e: React.DragEvent, index: number) => void
   onDrop: (index: number) => void
@@ -27,7 +28,7 @@ function parseDateDisplay(s: string): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver }: Props) {
+export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(task.name)
   const [startDraft, setStartDraft] = useState(() => toDateDisplay(task.start))
@@ -178,6 +179,15 @@ export function TaskRow({ task, index, onUpdate, onRemove, onDragStart, onDragOv
         </div>
       </div>
 
+      <button
+        className="task-row__detail-btn"
+        onClick={onOpenDetail}
+        aria-label={`Open details for ${task.name}`}
+        title="Open details"
+        type="button"
+      >
+        ⤢
+      </button>
       <button
         className="task-row__delete"
         onClick={onRemove}
