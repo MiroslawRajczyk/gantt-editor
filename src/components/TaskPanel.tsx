@@ -1,7 +1,7 @@
 import type { RefObject } from 'react'
 import type { GanttTask } from '../types'
 import { TaskRow } from './TaskRow'
-import { GANTT_HEADER_HEIGHT } from '../constants'
+import { GANTT_HEADER_HEIGHT, GANTT_TOOLBAR_HEIGHT } from '../constants'
 
 interface Props {
   tasks: GanttTask[]
@@ -14,7 +14,7 @@ interface Props {
 export function TaskPanel({ tasks, onAdd, onRemove, onUpdate, listRef }: Props) {
   return (
     <div className="task-panel">
-      <div className="task-panel__header" style={{ height: GANTT_HEADER_HEIGHT }}>
+      <div className="task-panel__header" style={{ height: GANTT_HEADER_HEIGHT + GANTT_TOOLBAR_HEIGHT }}>
         <h2 className="task-panel__title">Tasks</h2>
         <button className="task-panel__add-btn" onClick={onAdd}>
           + Add task
