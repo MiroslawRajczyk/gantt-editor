@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Assignee, Filter, FilterType, GanttTask, Tag } from '../types'
+import { useClickUpConfig } from '../hooks/useClickUpConfig'
+import { getListStatuses } from '../lib/clickup'
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
@@ -50,10 +52,10 @@ function newFilter(type: FilterType): Filter {
 
 // ─── Data helpers (derived from allTasks) ────────────────────────────────────
 
-function uniqueStatuses(tasks: GanttTask[]): string[] {
-  const seen = new Set<string>()
-  for (const t of tasks) if (t.status) seen.add(t.status)
-  return [...seen]
+function uniqueStatuses(tasks: GanttTask[]): { name: string; color?: string }[] {
+  const map = new Map<string, string | undefined>()
+  for (const t of tasks) if (t.status) map.set(t.status, t.statusColor)
+  return [...map.entries()].map(([name, color]) => ({ name, color }))
 }
 
 function uniqueTags(tasks: GanttTask[]): Tag[] {
@@ -165,14 +167,26 @@ function MultiSelectList<K>({
 
 function StatusValueEditor({ value, onChange, allTasks }: { value: string[]; onChange: (v: string[]) => void; allTasks: GanttTask[] }) {
   const statuses = uniqueStatuses(allTasks)
+  const { config } = useClickUpConfig()
+  const [fetchedColors, setFetchedColors] = useState<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    if (!config?.token || !config?.listId) return
+    getListStatuses(config.token, config.listId)
+      .then(ss => setFetchedColors(new Map(ss.map(s => [s.status, s.color]))))
+      .catch(() => {})
+  }, [config?.token, config?.listId])
+
+  const colorMap = new Map(statuses.map(s => [s.name, fetchedColors.get(s.name) ?? s.color]))
+
   return (
     <MultiSelectList
-      items={statuses.map(s => ({ key: s }))}
+      items={statuses.map(s => ({ key: s.name }))}
       value={value}
       onChange={onChange}
       renderItem={({ key }) => (
         <span className="fbar-status">
-          <span className="fbar-dot" style={{ background: '#888' }} />
+          <span className="fbar-dot" style={{ background: colorMap.get(key) ?? '#888' }} />
           {key}
         </span>
       )}

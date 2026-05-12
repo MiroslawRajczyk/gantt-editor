@@ -18,6 +18,7 @@ export interface GanttTask {
   dependencies?: string[]
   clickupId?: string
   status?: string
+  statusColor?: string
   priority?: 1 | 2 | 3 | 4
   assignees?: Assignee[]
   tags?: Tag[]
