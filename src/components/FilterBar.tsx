@@ -3,6 +3,17 @@ import type { Assignee, Filter, FilterType, GanttTask, Tag } from '../types'
 import { useClickUpConfig } from '../hooks/useClickUpConfig'
 import { getListStatuses } from '../lib/clickup'
 
+function readableFg(bg?: string): string | undefined {
+  if (!bg) return undefined
+  const hex = bg.replace('#', '')
+  if (hex.length !== 6) return '#000'
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return lum > 0.55 ? '#000' : '#fff'
+}
+
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
 const FILTER_TYPES: { type: FilterType; label: string; icon: string }[] = [
@@ -204,7 +215,7 @@ function TagValueEditor({ value, onChange, allTasks }: { value: string[]; onChan
       renderItem={({ key }) => {
         const t = tags.find(x => x.name === key)
         return (
-          <span className="fbar-tag-pill" style={{ background: t?.tag_bg, color: t?.tag_fg }}>
+          <span className="fbar-tag-pill" style={{ background: t?.tag_bg, color: readableFg(t?.tag_bg) }}>
             {key}
           </span>
         )
@@ -305,7 +316,7 @@ function ChipSummary({ f, allTasks }: { f: Filter; allTasks: GanttTask[] }) {
           {v.map(n => {
             const t = tags.find(x => x.name === n)
             return <span key={n} className="fbar-tag-pill fbar-tag-pill--xs"
-              style={{ background: t?.tag_bg, color: t?.tag_fg }}>{n}</span>
+              style={{ background: t?.tag_bg, color: readableFg(t?.tag_bg) }}>{n}</span>
           })}
         </>
       )
