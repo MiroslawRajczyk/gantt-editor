@@ -926,6 +926,47 @@
   flex-shrink: 0;
 }
 
+/* Tag chips */
+.tdp-tags-wrap {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.tdp-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 4px 3px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: white;
+  font-size: 12px;
+  color: var(--text-mid);
+}
+
+.tdp-tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tdp-tag-x {
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0 3px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 50%;
+}
+.tdp-tag-x:hover { color: var(--danger); background: #fee2e2; }
+
+.tdp-picker-create { font-style: italic; color: var(--accent, #3b82f6); }
+.tdp-picker-create:hover { background: var(--accent-soft, #eff6ff); }
+
 /* Date pills */
 .tdp-date-pill {
   display: inline-flex;

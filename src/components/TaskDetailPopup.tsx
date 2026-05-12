@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Assignee, GanttTask } from '../types'
-import { getListStatuses, listTeamMembers, type ClickUpStatus, type TeamMember } from '../lib/clickup'
+import type { Assignee, GanttTask, Tag } from '../types'
+import { getListStatuses, getSpaceTags, listTeamMembers, type ClickUpStatus, type TeamMember } from '../lib/clickup'
 import { AssigneePicker } from './AssigneePicker'
+import { TagPicker } from './TagPicker'
 
 interface Props {
   task: GanttTask
@@ -11,6 +12,7 @@ interface Props {
   clickupToken?: string
   clickupTeamId?: string
   clickupListId?: string
+  clickupSpaceId?: string
 }
 
 const PRIORITIES: Record<number, { label: string; color: string }> = {
@@ -186,13 +188,17 @@ function StatusSelector({
   )
 }
 
-export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToken, clickupTeamId, clickupListId }: Props) {
+export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToken, clickupTeamId, clickupListId, clickupSpaceId }: Props) {
   const [nameDraft, setNameDraft] = useState(task.name)
   const [descDraft, setDescDraft] = useState(task.description ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [members, setMembers] = useState<TeamMember[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [tagPickerOpen, setTagPickerOpen] = useState(false)
+  const [spaceTags, setSpaceTags] = useState<Tag[]>([])
+  const [tagsLoading, setTagsLoading] = useState(false)
+  const [tagsError, setTagsError] = useState<string | null>(null)
 
   useEffect(() => {
     setNameDraft(task.name)
@@ -245,6 +251,40 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
     onUpdate({
       assignees: (task.assignees ?? []).filter(x => x.id !== a.id || x.username !== a.username),
     })
+  }
+
+  const openTagPicker = async () => {
+    setTagPickerOpen(true)
+    if (spaceTags.length === 0 && !tagsLoading && !tagsError && clickupToken && clickupSpaceId) {
+      setTagsLoading(true)
+      try {
+        setSpaceTags(await getSpaceTags(clickupToken, clickupSpaceId))
+        setTagsError(null)
+      } catch (e) {
+        setTagsError(String(e))
+      } finally {
+        setTagsLoading(false)
+      }
+    }
+  }
+
+  const toggleTag = (tag: Tag) => {
+    const cur = task.tags ?? []
+    const exists = cur.some(t => t.name === tag.name)
+    onUpdate({
+      tags: exists ? cur.filter(t => t.name !== tag.name) : [...cur, tag],
+    })
+  }
+
+  const removeTag = (tag: Tag) => {
+    onUpdate({ tags: (task.tags ?? []).filter(t => t.name !== tag.name) })
+  }
+
+  const createTag = (name: string) => {
+    const newTag: Tag = { name }
+    setSpaceTags(prev => prev.some(t => t.name === name) ? prev : [...prev, newTag])
+    toggleTag(newTag)
+    setTagPickerOpen(false)
   }
 
   const clickupUrl = task.clickupId ? `https://app.clickup.com/t/${task.clickupId}` : null
@@ -329,6 +369,44 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
                   assigned={task.assignees ?? []}
                   onToggle={toggleAssignee}
                   onClose={() => setPickerOpen(false)}
+                />
+              )}
+            </div>
+
+            {/* Tags */}
+            <div className="tdp-label">Tags</div>
+            <div className="tdp-value tdp-tags-wrap">
+              {(task.tags ?? []).map(tag => (
+                <span key={tag.name} className="tdp-tag-chip">
+                  <span className="tdp-tag-dot" style={{ background: tag.tag_bg ?? '#888' }} />
+                  {tag.name}
+                  <span
+                    className="tdp-tag-x"
+                    onClick={e => { e.stopPropagation(); removeTag(tag) }}
+                    title="Remove tag"
+                  >
+                    ×
+                  </span>
+                </span>
+              ))}
+              {clickupToken && clickupSpaceId && (
+                <button
+                  type="button"
+                  className="tdp-add-assignee-btn"
+                  onClick={e => { e.stopPropagation(); openTagPicker() }}
+                >
+                  + Add tag
+                </button>
+              )}
+              {tagPickerOpen && (
+                <TagPicker
+                  spaceTags={spaceTags}
+                  loading={tagsLoading}
+                  error={tagsError}
+                  selected={task.tags ?? []}
+                  onToggle={tag => { toggleTag(tag); setTagPickerOpen(false) }}
+                  onCreate={createTag}
+                  onClose={() => setTagPickerOpen(false)}
                 />
               )}
             </div>

@@ -1,3 +1,5 @@
+import type { Tag } from '../types'
+
 const BASE = '/clickup'
 
 export interface Team {
@@ -30,6 +32,7 @@ export interface RemoteTask {
   status?: { status: string; color?: string }
   priority?: { orderindex?: string }
   assignees?: Array<{ id: number; username: string }>
+  tags?: Array<{ name: string; tag_bg?: string; tag_fg?: string }>
   description?: string
 }
 
@@ -169,6 +172,19 @@ export async function listTeamMembers(token: string, teamId: string): Promise<Te
   const r = await request<{ teams: Array<{ id: string; members: Array<{ user: TeamMember }> }> }>(token, '/team')
   const team = r.teams.find(t => t.id === teamId)
   return team?.members.map(m => m.user) ?? []
+}
+
+export async function getSpaceTags(token: string, spaceId: string): Promise<Tag[]> {
+  const r = await request<{ tags: Tag[] }>(token, `/space/${spaceId}/tag`)
+  return r.tags ?? []
+}
+
+export async function addTagToTask(token: string, taskId: string, tagName: string): Promise<void> {
+  await request<unknown>(token, `/task/${taskId}/tag/${encodeURIComponent(tagName)}`, { method: 'POST' })
+}
+
+export async function removeTagFromTask(token: string, taskId: string, tagName: string): Promise<void> {
+  await request<unknown>(token, `/task/${taskId}/tag/${encodeURIComponent(tagName)}`, { method: 'DELETE' })
 }
 
 export async function addDependency(

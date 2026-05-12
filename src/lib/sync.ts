@@ -1,9 +1,11 @@
 import type { ClickUpConfig, GanttTask, SyncReport } from '../types'
 import {
   addDependency,
+  addTagToTask,
   createTask,
   fromClickUpDate,
   getAllTasks,
+  removeTagFromTask,
   toClickUpDate,
   updateTask,
   type RemoteTask,
@@ -108,6 +110,7 @@ export async function syncWithClickUp(
 
     const remotePriority = r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined
     const remoteAssignees = r.assignees?.map(a => ({ id: a.id, username: a.username }))
+    const remoteTags = r.tags?.map(t => ({ name: t.name, tag_bg: t.tag_bg, tag_fg: t.tag_fg }))
 
     if (remoteChangedSinceSync) {
       const fieldsChanged =
@@ -122,6 +125,7 @@ export async function syncWithClickUp(
         status: r.status?.status,
         priority: remotePriority,
         assignees: remoteAssignees,
+        tags: remoteTags,
         description: r.description ?? l.description,
       })
       if (fieldsChanged) report.updatedFromRemote++
@@ -133,6 +137,10 @@ export async function syncWithClickUp(
       const assigneesDiff = (addIds.length || remIds.length)
         ? { assignees: { add: addIds, rem: remIds } }
         : {}
+      const localTagNames = new Set((l.tags ?? []).map(t => t.name))
+      const remoteTagNames = new Set((remoteTags ?? []).map(t => t.name))
+      const addTagNames = [...localTagNames].filter(n => !remoteTagNames.has(n))
+      const remTagNames = [...remoteTagNames].filter(n => !localTagNames.has(n))
       const localDiffersFromRemote =
         l.name !== r.name ||
         !sameDay(l.start, remoteStart) ||
@@ -140,7 +148,8 @@ export async function syncWithClickUp(
         l.priority !== remotePriority ||
         (l.description ?? '') !== (r.description ?? '') ||
         (l.status !== undefined && l.status !== r.status?.status) ||
-        addIds.length > 0 || remIds.length > 0
+        addIds.length > 0 || remIds.length > 0 ||
+        addTagNames.length > 0 || remTagNames.length > 0
       if (localDiffersFromRemote) {
         try {
           await updateTask(token, r.id, {
@@ -154,6 +163,10 @@ export async function syncWithClickUp(
             ...(l.status !== undefined ? { status: l.status } : {}),
             ...assigneesDiff,
           })
+          await Promise.all([
+            ...addTagNames.map(n => addTagToTask(token, r.id, n)),
+            ...remTagNames.map(n => removeTagFromTask(token, r.id, n)),
+          ])
           report.pushedToRemote++
         } catch (e) {
           report.errors.push(`updateTask(${r.id}): ${String(e)}`)
@@ -178,6 +191,13 @@ export async function syncWithClickUp(
         ...(assigneeIds.length ? { assignees: assigneeIds } : {}),
       })
       remoteById.set(created.id, created)
+      for (const tag of (u.tags ?? [])) {
+        try {
+          await addTagToTask(token, created.id, tag.name)
+        } catch (e) {
+          report.errors.push(`addTagToTask(${created.id}, ${tag.name}): ${String(e)}`)
+        }
+      }
       next.push({ ...u, clickupId: created.id })
       report.createdRemote++
     } catch (e) {
@@ -205,6 +225,7 @@ export async function syncWithClickUp(
       status: r.status?.status,
       priority: r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined,
       assignees: r.assignees?.map(a => ({ id: a.id, username: a.username })),
+      tags: r.tags?.map(t => ({ name: t.name, tag_bg: t.tag_bg, tag_fg: t.tag_fg })),
       description: r.description,
     })
     report.added++

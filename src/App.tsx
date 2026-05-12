@@ -207,6 +207,7 @@ export default function App() {
             clickupToken={config?.token}
             clickupTeamId={config?.teamId}
             clickupListId={config?.listId}
+            clickupSpaceId={config?.spaceId}
           />
         ) : null
       })()}

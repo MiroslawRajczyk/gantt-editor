@@ -3,6 +3,12 @@ export interface Assignee {
   username: string
 }
 
+export interface Tag {
+  name: string
+  tag_bg?: string
+  tag_fg?: string
+}
+
 export interface GanttTask {
   id: string
   name: string
@@ -14,6 +20,7 @@ export interface GanttTask {
   status?: string
   priority?: 1 | 2 | 3 | 4
   assignees?: Assignee[]
+  tags?: Tag[]
   description?: string
 }
 
