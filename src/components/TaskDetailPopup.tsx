@@ -145,7 +145,7 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
     onUpdate({
       assignees: exists
         ? cur.filter(a => a.id !== m.id)
-        : [...cur, { id: m.id, username: m.username }],
+        : [...cur, { id: m.id, username: m.username ?? m.email }],
     })
   }
 

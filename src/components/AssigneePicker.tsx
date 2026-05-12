@@ -54,7 +54,7 @@ export function AssigneePicker({ members, loading, error, assigned, onToggle, on
 
   const q = search.toLowerCase()
   const filtered = members.filter(
-    m => m.username.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
+    m => (m.username ?? '').toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
   )
   const assignedIds = new Set(assigned.map(a => a.id))
 
@@ -71,20 +71,23 @@ export function AssigneePicker({ members, loading, error, assigned, onToggle, on
         {loading && <div className="tdp-picker-empty">Loading…</div>}
         {!loading && error && <div className="tdp-picker-error">{error}</div>}
         {!loading && !error && filtered.length === 0 && <div className="tdp-picker-empty">No results</div>}
-        {!loading && !error && filtered.map(m => (
+        {!loading && !error && filtered.map(m => {
+          const displayName = m.username ?? m.email
+          return (
           <button
             key={m.id}
             type="button"
             className={`tdp-picker-item${assignedIds.has(m.id) ? ' is-assigned' : ''}`}
             onClick={() => onToggle(m)}
           >
-            <span className="tdp-picker-avatar" style={{ background: avatarColor(m.username) }}>
-              {getInitials(m.username)}
+            <span className="tdp-picker-avatar" style={{ background: avatarColor(displayName) }}>
+              {getInitials(displayName)}
             </span>
-            <span className="tdp-picker-name">{m.username}</span>
+            <span className="tdp-picker-name">{displayName}</span>
             {assignedIds.has(m.id) && <span className="tdp-picker-check">✓</span>}
           </button>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

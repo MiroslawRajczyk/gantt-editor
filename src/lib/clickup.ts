@@ -35,7 +35,7 @@ export interface RemoteTask {
 
 export interface TeamMember {
   id: number
-  username: string
+  username: string | null
   email: string
   profilePicture?: string
 }
