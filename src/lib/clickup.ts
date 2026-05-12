@@ -53,6 +53,13 @@ export interface CreateTaskBody {
 
 export interface UpdateTaskBody extends Omit<CreateTaskBody, 'assignees'> {
   assignees?: { add?: number[]; rem?: number[] }
+  status?: string
+}
+
+export interface ClickUpStatus {
+  status: string
+  color: string
+  orderindex: number
 }
 
 export class ClickUpError extends Error {
@@ -151,6 +158,11 @@ export async function updateTask(
     method: 'PUT',
     body: JSON.stringify(body),
   })
+}
+
+export async function getListStatuses(token: string, listId: string): Promise<ClickUpStatus[]> {
+  const r = await request<{ statuses: ClickUpStatus[] }>(token, `/list/${listId}`)
+  return r.statuses ?? []
 }
 
 export async function listTeamMembers(token: string, teamId: string): Promise<TeamMember[]> {

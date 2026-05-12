@@ -139,6 +139,7 @@ export async function syncWithClickUp(
         !sameDay(l.end, remoteEnd) ||
         l.priority !== remotePriority ||
         (l.description ?? '') !== (r.description ?? '') ||
+        (l.status !== undefined && l.status !== r.status?.status) ||
         addIds.length > 0 || remIds.length > 0
       if (localDiffersFromRemote) {
         try {
@@ -150,6 +151,7 @@ export async function syncWithClickUp(
             due_date_time: false,
             ...(l.priority !== undefined ? { priority: l.priority } : {}),
             ...(l.description !== undefined ? { description: l.description } : {}),
+            ...(l.status !== undefined ? { status: l.status } : {}),
             ...assigneesDiff,
           })
           report.pushedToRemote++
@@ -157,7 +159,7 @@ export async function syncWithClickUp(
           report.errors.push(`updateTask(${r.id}): ${String(e)}`)
         }
       }
-      next.push({ ...l, status: r.status?.status })
+      next.push({ ...l })
     }
   }
 

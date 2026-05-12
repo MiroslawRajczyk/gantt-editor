@@ -206,6 +206,7 @@ export default function App() {
             onUpdate={patch => handleTaskUpdate(detailTaskId, patch)}
             clickupToken={config?.token}
             clickupTeamId={config?.teamId}
+            clickupListId={config?.listId}
           />
         ) : null
       })()}

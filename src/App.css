@@ -622,6 +622,33 @@
   white-space: nowrap;
 }
 
+.tdp-status-wrap { position: relative; display: inline-flex; }
+
+.tdp-status-badge--btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tdp-status-badge--btn:hover { filter: brightness(0.9); }
+
+.tdp-status-menu { top: calc(100% + 4px); left: 0; min-width: 160px; }
+
+.tdp-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tdp-menu-loading,
+.tdp-menu-error {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.tdp-menu-error { color: #ef4444; }
+
 .tdp-topbar-spacer { flex: 1; }
 
 .tdp-iconbtn {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Assignee, GanttTask } from '../types'
-import { listTeamMembers, type TeamMember } from '../lib/clickup'
+import { getListStatuses, listTeamMembers, type ClickUpStatus, type TeamMember } from '../lib/clickup'
 import { AssigneePicker } from './AssigneePicker'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   onUpdate: (patch: Partial<GanttTask>) => void
   clickupToken?: string
   clickupTeamId?: string
+  clickupListId?: string
 }
 
 const PRIORITIES: Record<number, { label: string; color: string }> = {
@@ -94,7 +95,98 @@ function PriorityPill({ value, onChange }: { value: GanttTask['priority']; onCha
   )
 }
 
-export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToken, clickupTeamId }: Props) {
+function StatusSelector({
+  value,
+  onChange,
+  token,
+  listId,
+}: {
+  value: string | undefined
+  onChange: (v: string) => void
+  token: string | undefined
+  listId: string | undefined
+}) {
+  const [open, setOpen] = useState(false)
+  const [statuses, setStatuses] = useState<ClickUpStatus[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const ref = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const canEdit = !!(token && listId)
+
+  useEffect(() => {
+    if (!canEdit || !value || statuses.length > 0 || loading) return
+    setLoading(true)
+    getListStatuses(token!, listId!)
+      .then(s => { setStatuses(s); setError(null) })
+      .catch(e => setError(String(e)))
+      .finally(() => setLoading(false))
+  }, [canEdit, listId])
+
+  useEffect(() => {
+    if (!open || !canEdit) return
+    const fn = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node) && !ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const kfn = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    setTimeout(() => document.addEventListener('mousedown', fn), 0)
+    document.addEventListener('keydown', kfn)
+    return () => {
+      document.removeEventListener('mousedown', fn)
+      document.removeEventListener('keydown', kfn)
+    }
+  }, [open, canEdit])
+
+  const handleOpen = () => {
+    if (!canEdit) return
+    setOpen(o => !o)
+  }
+
+  const current = statuses.find(s => s.status === value)
+  const badgeStyle = current?.color ? { background: current.color, color: '#fff', borderColor: current.color } : {}
+
+  if (!value) return null
+
+  if (!canEdit) {
+    return <span className="tdp-status-badge">{value}</span>
+  }
+
+  return (
+    <div className="tdp-status-wrap">
+      <button
+        ref={ref}
+        className="tdp-status-badge tdp-status-badge--btn"
+        style={badgeStyle}
+        onClick={handleOpen}
+        type="button"
+        title="Change status"
+      >
+        {value}
+        <span className="tdp-chev">▾</span>
+      </button>
+      {open && (
+        <div ref={menuRef} className="tdp-menu tdp-status-menu">
+          {loading && <div className="tdp-menu-loading">Loading…</div>}
+          {error && <div className="tdp-menu-error">{error}</div>}
+          {statuses.map(s => (
+            <button
+              key={s.status}
+              className={value === s.status ? 'is-active' : ''}
+              onClick={() => { onChange(s.status); setOpen(false) }}
+              type="button"
+            >
+              <span className="tdp-status-dot" style={{ background: s.color }} />
+              {s.status}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToken, clickupTeamId, clickupListId }: Props) {
   const [nameDraft, setNameDraft] = useState(task.name)
   const [descDraft, setDescDraft] = useState(task.description ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -164,9 +256,12 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
         {/* Top bar */}
         <div className="tdp-topbar">
           <span className="tdp-id">TASK-{task.id.slice(0, 8).toUpperCase()}</span>
-          {task.status && (
-            <span className="tdp-status-badge">{task.status}</span>
-          )}
+          <StatusSelector
+            value={task.status}
+            onChange={v => onUpdate({ status: v })}
+            token={clickupToken}
+            listId={clickupListId}
+          />
           <div className="tdp-topbar-spacer" />
           {clickupUrl && (
             <a className="tdp-iconbtn" href={clickupUrl} target="_blank" rel="noreferrer" title="Open in ClickUp">
