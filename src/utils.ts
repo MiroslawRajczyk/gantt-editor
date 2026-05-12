@@ -42,13 +42,6 @@ export function taskMatchesFilter(task: GanttTask, f: Filter): boolean {
       const t = task.start.getTime()
       return f.op === 'before' ? t <= d : t >= d
     }
-    case 'progress': {
-      const v = Number(f.value)
-      const p = task.progress ?? 0
-      if (f.op === 'lt') return p < v
-      if (f.op === 'gt') return p > v
-      return p === v
-    }
     case 'deps': {
       const has = (task.dependencies?.length ?? 0) > 0
       return f.op === 'has' ? has : !has

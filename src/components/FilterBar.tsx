@@ -24,7 +24,6 @@ const FILTER_TYPES: { type: FilterType; label: string; icon: string }[] = [
   { type: 'name',        label: 'Name contains', icon: '⌕' },
   { type: 'due',         label: 'Due date',      icon: '⤓' },
   { type: 'start',       label: 'Start date',    icon: '⤒' },
-  { type: 'progress',    label: 'Progress',      icon: '%' },
   { type: 'deps',        label: 'Dependencies',  icon: '⇢' },
   { type: 'unscheduled', label: 'Unscheduled',   icon: '◌' },
 ]
@@ -37,7 +36,6 @@ const DEFAULT_OP: Record<FilterType, string> = {
   name:        'contains',
   due:         'before',
   start:       'after',
-  progress:    'lt',
   deps:        'has',
   unscheduled: 'is',
 }
@@ -54,7 +52,6 @@ function newFilter(type: FilterType): Filter {
     case 'name':        value = ''; break
     case 'due':
     case 'start':       value = null; break
-    case 'progress':    value = 100; break
     case 'deps':
     case 'unscheduled': value = null; break
   }
@@ -125,8 +122,6 @@ function OpSwitcher({ type, op, onChange }: { type: FilterType; op: string; onCh
     opts = [['contains', 'contains'], ['notContains', 'excludes']]
   else if (type === 'due' || type === 'start')
     opts = [['before', 'before'], ['after', 'after']]
-  else if (type === 'progress')
-    opts = [['lt', '<'], ['gt', '>'], ['eq', '=']]
   else
     return null
   return (
@@ -285,16 +280,6 @@ function DateValueEditor({ value, onChange }: { value: string | null; onChange: 
   )
 }
 
-function ProgressValueEditor({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="fbar-progress">
-      <input type="range" min="0" max="100" step="5" value={value ?? 0}
-        onChange={e => onChange(Number(e.target.value))} />
-      <span className="fbar-progress__val">{value ?? 0}%</span>
-    </div>
-  )
-}
-
 // ─── Chip summary helpers ─────────────────────────────────────────────────────
 
 function ChipSummary({ f, allTasks }: { f: Filter; allTasks: GanttTask[] }) {
@@ -354,8 +339,6 @@ function ChipSummary({ f, allTasks }: { f: Filter; allTasks: GanttTask[] }) {
       const dt = new Date(f.value as string)
       return <span>{dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
     }
-    case 'progress':
-      return <span>{f.value as number}%</span>
     case 'deps':
     case 'unscheduled':
       return null
@@ -403,7 +386,6 @@ function FilterChip({ filter, allTasks, onChange, onRemove }: {
     name:     <NameValueEditor     value={filter.value as string}          onChange={v => setField('value', v)} />,
     due:      <DateValueEditor     value={filter.value as string | null}   onChange={v => setField('value', v)} />,
     start:    <DateValueEditor     value={filter.value as string | null}   onChange={v => setField('value', v)} />,
-    progress: <ProgressValueEditor value={filter.value as number}          onChange={v => setField('value', v)} />,
   }
 
   const editor = editorMap[filter.type]

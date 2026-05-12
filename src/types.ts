@@ -36,7 +36,7 @@ export interface ClickUpConfig {
 
 export type FilterType =
   | 'status' | 'tag' | 'assignee' | 'priority' | 'name'
-  | 'due' | 'start' | 'progress' | 'deps' | 'unscheduled'
+  | 'due' | 'start' | 'deps' | 'unscheduled'
 
 export interface Filter {
   id: string

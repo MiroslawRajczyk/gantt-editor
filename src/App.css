@@ -781,20 +781,6 @@
   box-shadow: 0 0 0 2px rgba(124, 133, 245, 0.18);
 }
 .fbar-search--solo { margin: 2px 0; display: block; }
-.fbar-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 4px;
-}
-.fbar-progress input[type=range] { flex: 1; accent-color: var(--accent); }
-.fbar-progress__val {
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  color: var(--text-mid);
-  min-width: 32px;
-  text-align: right;
-}
 
 /* Gantt Panel */
 .gantt-panel {
