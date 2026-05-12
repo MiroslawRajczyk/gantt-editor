@@ -417,10 +417,11 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
               <label className="tdp-date-pill">
                 <input
                   type="date"
-                  value={toDateInput(task.start)}
+                  value={task.start ? toDateInput(task.start) : ''}
                   onChange={e => {
+                    if (!e.target.value) { onUpdate({ start: undefined }); return }
                     const d = new Date(e.target.value)
-                    if (!isNaN(d.getTime())) onUpdate({ start: d, end: d > task.end ? d : task.end })
+                    if (!isNaN(d.getTime())) onUpdate({ start: d, ...(task.end && d > task.end ? { end: d } : {}) })
                   }}
                 />
               </label>
@@ -428,16 +429,19 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
               <label className="tdp-date-pill">
                 <input
                   type="date"
-                  value={toDateInput(task.end)}
+                  value={task.end ? toDateInput(task.end) : ''}
                   onChange={e => {
+                    if (!e.target.value) { onUpdate({ end: undefined }); return }
                     const d = new Date(e.target.value)
-                    if (!isNaN(d.getTime())) onUpdate({ end: d, start: d < task.start ? d : task.start })
+                    if (!isNaN(d.getTime())) onUpdate({ end: d, ...(task.start && d < task.start ? { start: d } : {}) })
                   }}
                 />
               </label>
-              <span className="tdp-date-days">
-                {Math.max(1, Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24)) + 1)} days
-              </span>
+              {task.start && task.end && (
+                <span className="tdp-date-days">
+                  {Math.max(1, Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24)) + 1)} days
+                </span>
+              )}
             </div>
 
             {/* Dependencies */}

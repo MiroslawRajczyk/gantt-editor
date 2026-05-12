@@ -67,12 +67,12 @@ export default function App() {
       updateTask(id, patch)
       if ('end' in patch && patch.end !== undefined) {
         const prev = tasks.find(t => t.id === id)
-        if (prev) {
+        if (prev && prev.end !== undefined) {
           const delta = patch.end.getTime() - prev.end.getTime()
           if (delta !== 0) {
             for (const sid of getAllSuccessors(id, tasks)) {
               const s = tasks.find(t => t.id === sid)
-              if (s) {
+              if (s && s.start && s.end) {
                 updateTask(sid, {
                   start: new Date(s.start.getTime() + delta),
                   end: new Date(s.end.getTime() + delta),

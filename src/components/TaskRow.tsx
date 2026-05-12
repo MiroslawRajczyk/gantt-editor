@@ -31,8 +31,8 @@ function parseDateDisplay(s: string): Date | null {
 export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(task.name)
-  const [startDraft, setStartDraft] = useState(() => toDateDisplay(task.start))
-  const [endDraft, setEndDraft] = useState(() => toDateDisplay(task.end))
+  const [startDraft, setStartDraft] = useState(() => task.start ? toDateDisplay(task.start) : '')
+  const [endDraft, setEndDraft] = useState(() => task.end ? toDateDisplay(task.end) : '')
   const inputRef = useRef<HTMLInputElement>(null)
   const hiddenStartRef = useRef<HTMLInputElement>(null)
   const hiddenEndRef = useRef<HTMLInputElement>(null)
@@ -45,8 +45,8 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
     if (!editing) setDraft(task.name)
   }, [task.name, editing])
 
-  useEffect(() => { setStartDraft(toDateDisplay(task.start)) }, [task.start])
-  useEffect(() => { setEndDraft(toDateDisplay(task.end)) }, [task.end])
+  useEffect(() => { setStartDraft(task.start ? toDateDisplay(task.start) : '') }, [task.start])
+  useEffect(() => { setEndDraft(task.end ? toDateDisplay(task.end) : '') }, [task.end])
 
   function commitName() {
     const trimmed = draft.trim() || task.name
@@ -56,15 +56,17 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
   }
 
   function commitStart() {
+    if (!startDraft.trim()) { onUpdate({ start: undefined }); return }
     const d = parseDateDisplay(startDraft)
-    if (!d) { setStartDraft(toDateDisplay(task.start)); return }
-    onUpdate({ start: d, end: d > task.end ? d : task.end })
+    if (!d) { setStartDraft(task.start ? toDateDisplay(task.start) : ''); return }
+    onUpdate({ start: d, ...(task.end && d > task.end ? { end: d } : {}) })
   }
 
   function commitEnd() {
+    if (!endDraft.trim()) { onUpdate({ end: undefined }); return }
     const d = parseDateDisplay(endDraft)
-    if (!d) { setEndDraft(toDateDisplay(task.end)); return }
-    onUpdate({ end: d, start: d < task.start ? d : task.start })
+    if (!d) { setEndDraft(task.end ? toDateDisplay(task.end) : ''); return }
+    onUpdate({ end: d, ...(task.start && d < task.start ? { start: d } : {}) })
   }
 
   return (
@@ -136,7 +138,7 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
               const [yyyy, mm, dd] = e.target.value.split('-')
               setStartDraft(`${dd}.${mm}.${yyyy}`)
               const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
-              onUpdate({ start: d, end: d > task.end ? d : task.end })
+              onUpdate({ start: d, ...(task.end && d > task.end ? { end: d } : {}) })
             }}
           />
         </div>
@@ -173,7 +175,7 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
               const [yyyy, mm, dd] = e.target.value.split('-')
               setEndDraft(`${dd}.${mm}.${yyyy}`)
               const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd))
-              onUpdate({ end: d, start: d < task.start ? d : task.start })
+              onUpdate({ end: d, ...(task.start && d < task.start ? { start: d } : {}) })
             }}
           />
         </div>

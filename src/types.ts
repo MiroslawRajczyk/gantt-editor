@@ -12,8 +12,8 @@ export interface Tag {
 export interface GanttTask {
   id: string
   name: string
-  start: Date
-  end: Date
+  start?: Date
+  end?: Date
   progress: number
   dependencies?: string[]
   clickupId?: string

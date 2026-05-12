@@ -106,22 +106,24 @@ export function GanttPanel({
   useEffect(() => {
     if (!containerRef.current) return
 
-    if (tasks.length === 0) {
+    const frappeTasks = tasks
+      .filter(t => t.start && t.end)
+      .map(t => ({
+        id: t.id,
+        name: t.name,
+        start: toDateStr(t.start!),
+        end: toDateStr(t.end!),
+        progress: t.progress,
+        dependencies: t.dependencies?.join(',') ?? '',
+      }))
+
+    if (frappeTasks.length === 0) {
       if (ganttRef.current) {
         ganttRef.current.clear()
         ganttRef.current = null
       }
       return
     }
-
-    const frappeTasks = tasks.map(t => ({
-      id: t.id,
-      name: t.name,
-      start: toDateStr(t.start),
-      end: toDateStr(t.end),
-      progress: t.progress,
-      dependencies: t.dependencies?.join(',') ?? '',
-    }))
 
     if (ganttRef.current) {
       // During an active drag bar_being_dragged is true — skip refresh to keep
@@ -179,7 +181,7 @@ export function GanttPanel({
           const allTasks = tasksRef.current
           const prev = allTasks.find(t => t.id === task.id)
           onDateChangeRef.current(task.id, start, end)
-          if (prev) {
+          if (prev && prev.start && prev.end) {
             const startDelta = start.getTime() - prev.start.getTime()
             const prevDuration = prev.end.getTime() - prev.start.getTime()
             const newDuration = end.getTime() - start.getTime()
@@ -194,7 +196,7 @@ export function GanttPanel({
             if (propagateDelta !== 0) {
               for (const sid of getAllSuccessors(task.id, allTasks)) {
                 const s = allTasks.find(t => t.id === sid)
-                if (s) {
+                if (s && s.start && s.end) {
                   onDateChangeRef.current(
                     sid,
                     new Date(s.start.getTime() + propagateDelta),
@@ -245,7 +247,7 @@ export function GanttPanel({
       <div
         ref={containerRef}
         className="gantt-panel__chart"
-        style={{ display: tasks.length > 0 ? 'block' : 'none' }}
+        style={{ display: tasks.some(t => t.start && t.end) ? 'block' : 'none' }}
       />
     </div>
   )

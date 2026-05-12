@@ -11,14 +11,8 @@ import {
   type RemoteTask,
 } from './clickup'
 
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d)
-  r.setDate(r.getDate() + n)
-  return r
-}
-
-function sameDay(a: Date | null, b: Date | null): boolean {
-  if (!a || !b) return a === b
+function sameDay(a: Date | null | undefined, b: Date | null | undefined): boolean {
+  if (!a || !b) return !a && !b
   return a.getTime() === b.getTime()
 }
 
@@ -120,8 +114,8 @@ export async function syncWithClickUp(
       next.push({
         ...l,
         name: r.name,
-        start: remoteStart ?? l.start,
-        end: remoteEnd ?? l.end,
+        start: remoteStart ?? undefined,
+        end: remoteEnd ?? undefined,
         status: r.status?.status,
         priority: remotePriority,
         assignees: remoteAssignees,
@@ -154,10 +148,10 @@ export async function syncWithClickUp(
         try {
           await updateTask(token, r.id, {
             name: l.name,
-            start_date: toClickUpDate(l.start),
-            due_date: toClickUpDate(l.end),
-            start_date_time: false,
-            due_date_time: false,
+            start_date: l.start ? toClickUpDate(l.start) : null,
+            due_date: l.end ? toClickUpDate(l.end) : null,
+            ...(l.start ? { start_date_time: false } : {}),
+            ...(l.end ? { due_date_time: false } : {}),
             ...(l.priority !== undefined ? { priority: l.priority } : {}),
             ...(l.description !== undefined ? { description: l.description } : {}),
             ...(l.status !== undefined ? { status: l.status } : {}),
@@ -182,10 +176,8 @@ export async function syncWithClickUp(
       const assigneeIds = (u.assignees ?? []).map(a => a.id).filter(id => id !== -1)
       const created = await createTask(token, listId, {
         name: u.name,
-        start_date: toClickUpDate(u.start),
-        due_date: toClickUpDate(u.end),
-        start_date_time: false,
-        due_date_time: false,
+        ...(u.start ? { start_date: toClickUpDate(u.start), start_date_time: false } : {}),
+        ...(u.end ? { due_date: toClickUpDate(u.end), due_date_time: false } : {}),
         ...(u.priority !== undefined ? { priority: u.priority } : {}),
         ...(u.description !== undefined ? { description: u.description } : {}),
         ...(assigneeIds.length ? { assignees: assigneeIds } : {}),
@@ -210,17 +202,12 @@ export async function syncWithClickUp(
   const linkedCuids = new Set(next.map(t => t.clickupId).filter((x): x is string => !!x))
   for (const r of remote) {
     if (linkedCuids.has(r.id)) continue
-    const today = (() => {
-      const d = new Date()
-      d.setHours(0, 0, 0, 0)
-      return d
-    })()
     next.push({
       id: crypto.randomUUID(),
       clickupId: r.id,
       name: r.name,
-      start: fromClickUpDate(r.start_date) ?? today,
-      end: fromClickUpDate(r.due_date) ?? addDays(today, 7),
+      start: fromClickUpDate(r.start_date) ?? undefined,
+      end: fromClickUpDate(r.due_date) ?? undefined,
       progress: 0,
       status: r.status?.status,
       priority: r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined,

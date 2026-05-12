@@ -54,7 +54,9 @@ export interface CreateTaskBody {
   assignees?: number[]
 }
 
-export interface UpdateTaskBody extends Omit<CreateTaskBody, 'assignees'> {
+export interface UpdateTaskBody extends Omit<CreateTaskBody, 'assignees' | 'start_date' | 'due_date'> {
+  start_date?: string | null
+  due_date?: string | null
   assignees?: { add?: number[]; rem?: number[] }
   status?: string
 }
