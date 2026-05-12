@@ -1,11 +1,17 @@
 import { useRef, useState } from 'react'
 import type { RefObject } from 'react'
-import type { GanttTask } from '../types'
+import type { Filter, GanttTask } from '../types'
 import { TaskRow } from './TaskRow'
+import { FilterBar } from './FilterBar'
 import { GANTT_HEADER_HEIGHT, GANTT_TOOLBAR_HEIGHT } from '../constants'
 
 interface Props {
   tasks: GanttTask[]
+  allTasks: GanttTask[]
+  filters: Filter[]
+  setFilters: (filters: Filter[]) => void
+  matchMode: 'all' | 'any'
+  setMatchMode: (mode: 'all' | 'any') => void
   onAdd: () => void
   onClear: () => void
   onRemove: (id: string) => void
@@ -15,7 +21,7 @@ interface Props {
   listRef: RefObject<HTMLDivElement>
 }
 
-export function TaskPanel({ tasks, onAdd, onClear, onRemove, onUpdate, onReorder, onOpenDetail, listRef }: Props) {
+export function TaskPanel({ tasks, allTasks, filters, setFilters, matchMode, setMatchMode, onAdd, onClear, onRemove, onUpdate, onReorder, onOpenDetail, listRef }: Props) {
   const dragIndexRef = useRef<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
@@ -51,9 +57,20 @@ export function TaskPanel({ tasks, onAdd, onClear, onRemove, onUpdate, onReorder
         </div>
       </div>
 
+      <FilterBar
+        allTasks={allTasks}
+        filters={filters}
+        setFilters={setFilters}
+        matchMode={matchMode}
+        setMatchMode={setMatchMode}
+        visibleCount={tasks.length}
+      />
+
       <div className="task-panel__list" ref={listRef}>
         {tasks.length === 0 && (
-          <p className="task-panel__empty">No tasks yet. Add one above.</p>
+          <p className="task-panel__empty">
+            {filters.length > 0 ? 'No tasks match your filters.' : 'No tasks yet. Add one above.'}
+          </p>
         )}
         {tasks.map((task, idx) => (
           <TaskRow

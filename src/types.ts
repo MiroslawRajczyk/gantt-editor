@@ -33,6 +33,17 @@ export interface ClickUpConfig {
   lastSyncAt?: string
 }
 
+export type FilterType =
+  | 'status' | 'tag' | 'assignee' | 'priority' | 'name'
+  | 'due' | 'start' | 'progress' | 'deps' | 'unscheduled'
+
+export interface Filter {
+  id: string
+  type: FilterType
+  op: string
+  value: unknown
+}
+
 export interface SyncReport {
   added: number
   updatedFromRemote: number

@@ -1,4 +1,72 @@
-import type { GanttTask } from './types'
+import type { Filter, GanttTask } from './types'
+
+export function taskMatchesFilter(task: GanttTask, f: Filter): boolean {
+  switch (f.type) {
+    case 'status': {
+      const set = new Set(f.value as string[])
+      const hit = task.status != null && set.has(task.status)
+      return f.op === 'is' ? !!hit : !hit
+    }
+    case 'tag': {
+      const set = new Set(f.value as string[])
+      const names = (task.tags ?? []).map(t => t.name)
+      const hit = names.some(n => set.has(n))
+      return f.op === 'has' ? hit : !hit
+    }
+    case 'assignee': {
+      const set = new Set(f.value as number[])
+      const ids = (task.assignees ?? []).map(a => a.id)
+      const hit = ids.some(id => set.has(id))
+      return f.op === 'is' ? hit : !hit
+    }
+    case 'priority': {
+      const set = new Set(f.value as number[])
+      const hit = task.priority != null && set.has(task.priority)
+      return f.op === 'is' ? !!hit : !hit
+    }
+    case 'name': {
+      const q = ((f.value as string) ?? '').trim().toLowerCase()
+      if (!q) return true
+      const match = task.name.toLowerCase().includes(q)
+      return f.op === 'notContains' ? !match : match
+    }
+    case 'due': {
+      if (!f.value || !task.end) return false
+      const d = new Date(f.value as string).getTime()
+      const t = task.end.getTime()
+      return f.op === 'before' ? t <= d : t >= d
+    }
+    case 'start': {
+      if (!f.value || !task.start) return false
+      const d = new Date(f.value as string).getTime()
+      const t = task.start.getTime()
+      return f.op === 'before' ? t <= d : t >= d
+    }
+    case 'progress': {
+      const v = Number(f.value)
+      const p = task.progress ?? 0
+      if (f.op === 'lt') return p < v
+      if (f.op === 'gt') return p > v
+      return p === v
+    }
+    case 'deps': {
+      const has = (task.dependencies?.length ?? 0) > 0
+      return f.op === 'has' ? has : !has
+    }
+    case 'unscheduled':
+      return !task.start || !task.end
+  }
+}
+
+export function applyFilters(
+  tasks: GanttTask[],
+  filters: Filter[],
+  matchMode: 'all' | 'any',
+): GanttTask[] {
+  if (filters.length === 0) return tasks
+  if (matchMode === 'any') return tasks.filter(t => filters.some(f => taskMatchesFilter(t, f)))
+  return tasks.filter(t => filters.every(f => taskMatchesFilter(t, f)))
+}
 
 export function getAllSuccessors(taskId: string, allTasks: GanttTask[]): string[] {
   const result: string[] = []

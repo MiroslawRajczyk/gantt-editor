@@ -15,7 +15,8 @@
       "Bash(curl -s http://localhost:3000/clickup/team -H \"Authorization: pk_BAD_TOKEN_TEST\")",
       "Bash(cat \"/tmp/gantt-editor/project/styles.css\" | grep -A 200 \"dp-\\\\|detail-panel\\\\|is-modal\\\\|composer\" | head -400)",
       "Read(//tmp/gantt-editor/project/**)",
-      "Bash(grep -E \"\\\\.\\(js|ts|jsx|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(js|ts|jsx|tsx\\)$\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)"
     ]
   }
 }

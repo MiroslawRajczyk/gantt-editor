@@ -4,3 +4,4 @@
 export const GANTT_ROW_HEIGHT = 48    // bar_height + padding
 export const GANTT_HEADER_HEIGHT = 85 // upper + lower + 10
 export const GANTT_TOOLBAR_HEIGHT = 40 // .gantt-panel__toolbar height
+export const FILTER_BAR_HEIGHT = 44   // .fbar height — must match LHS and RHS spacer

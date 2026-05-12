@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTasks } from './hooks/useTasks'
 import { useClickUpConfig } from './hooks/useClickUpConfig'
 import { TaskPanel } from './components/TaskPanel'
@@ -6,9 +6,9 @@ import { GanttPanel } from './components/GanttPanel'
 import { Divider } from './components/Divider'
 import { ClickUpSettings } from './components/ClickUpSettings'
 import { TaskDetailPopup } from './components/TaskDetailPopup'
-import { getAllSuccessors } from './utils'
+import { applyFilters, getAllSuccessors } from './utils'
 import { syncWithClickUp } from './lib/sync'
-import type { GanttTask, SyncReport } from './types'
+import type { Filter, GanttTask, SyncReport } from './types'
 import './App.css'
 
 const MIN_PCT = 15
@@ -23,6 +23,9 @@ export default function App() {
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [lastReport, setLastReport] = useState<SyncReport | null>(null)
+  const [filters, setFilters] = useState<Filter[]>([])
+  const [matchMode, setMatchMode] = useState<'all' | 'any'>('all')
+  const filteredTasks = useMemo(() => applyFilters(tasks, filters, matchMode), [tasks, filters, matchMode])
   const containerRef = useRef<HTMLDivElement>(null)
   const taskListRef = useRef<HTMLDivElement>(null)
   const isSyncingRef = useRef(false)
@@ -174,7 +177,12 @@ export default function App() {
       <div className="app__body" ref={containerRef}>
         <div className="app__panel app__panel--left" style={{ width: `${leftPct}%` }}>
           <TaskPanel
-            tasks={tasks}
+            tasks={filteredTasks}
+            allTasks={tasks}
+            filters={filters}
+            setFilters={setFilters}
+            matchMode={matchMode}
+            setMatchMode={setMatchMode}
             onAdd={addTask}
             onClear={() => { if (confirm('Remove all tasks?')) clearTasks() }}
             onRemove={removeTask}
@@ -187,7 +195,7 @@ export default function App() {
         <Divider onResize={handleResize} />
         <div className="app__panel app__panel--right" style={{ width: `${100 - leftPct}%` }}>
           <GanttPanel
-            tasks={tasks}
+            tasks={filteredTasks}
             onDateChange={(id, start, end) => updateTask(id, { start, end })}
             onContainerReady={handleContainerReady}
             onToggleDependency={handleToggleDependency}
