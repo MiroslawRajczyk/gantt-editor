@@ -106,18 +106,14 @@ export function GanttPanel({
   useEffect(() => {
     if (!containerRef.current) return
 
-    const frappeTasks = tasks
-      .filter(t => t.start && t.end)
-      .map(t => ({
-        id: t.id,
-        name: t.name,
-        start: toDateStr(t.start!),
-        end: toDateStr(t.end!),
-        progress: t.progress,
-        dependencies: t.dependencies?.join(',') ?? '',
-      }))
+    const frappeTasks = tasks.map(t =>
+      t.start && t.end
+        ? { id: t.id, name: t.name, start: toDateStr(t.start), end: toDateStr(t.end),
+            progress: t.progress, dependencies: t.dependencies?.join(',') ?? '' }
+        : { id: t.id, name: t.name, _placeholder: true, progress: 0, dependencies: '' }
+    ) as FrappeGanttNS.Task[]
 
-    if (frappeTasks.length === 0) {
+    if (tasks.length === 0) {
       if (ganttRef.current) {
         const oldContainer = (ganttRef.current as any).$container as HTMLElement | null
         ganttRef.current.clear()
@@ -247,7 +243,7 @@ export function GanttPanel({
       <div
         ref={containerRef}
         className="gantt-panel__chart"
-        style={{ display: tasks.some(t => t.start && t.end) ? 'block' : 'none' }}
+        style={{ display: tasks.length > 0 ? 'block' : 'none' }}
       />
     </div>
   )

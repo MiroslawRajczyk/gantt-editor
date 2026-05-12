@@ -140,6 +140,15 @@ export default class Gantt {
     setup_tasks(tasks) {
         this.tasks = tasks
             .map((task, i) => {
+                if (task._placeholder) {
+                    task._start = task._end = new Date();
+                    task.dependencies = [];
+                    if (!task.id) task.id = generate_id(task);
+                    else if (typeof task.id === 'string') task.id = task.id.replaceAll(' ', '_');
+                    else task.id = `${task.id}`;
+                    return task;
+                }
+
                 if (!task.start) {
                     console.error(
                         `task "${task.id}" doesn't have a start date`,
@@ -296,6 +305,7 @@ export default class Gantt {
         }
 
         for (let task of this.tasks) {
+            if (task._placeholder) continue;
             if (!gantt_start || task._start < gantt_start) {
                 gantt_start = task._start;
             }
@@ -303,6 +313,7 @@ export default class Gantt {
                 gantt_end = task._end;
             }
         }
+        if (!gantt_start) { gantt_start = new Date(); gantt_end = new Date(); }
 
         gantt_start = date_utils.start_of(gantt_start, this.config.unit);
         gantt_end = date_utils.start_of(gantt_end, this.config.unit);
@@ -917,6 +928,9 @@ export default class Gantt {
         this.bars = this.tasks.map((task) => {
             const bar = new Bar(this, task);
             this.layers.bar.appendChild(bar.group);
+            if (task._placeholder) {
+                bar.group.setAttribute('style', 'visibility:hidden;pointer-events:none');
+            }
             return bar;
         });
     }
@@ -927,8 +941,9 @@ export default class Gantt {
             let arrows = [];
             arrows = task.dependencies
                 .map((task_id) => {
+                    if (task._placeholder) return;
                     const dependency = this.get_task(task_id);
-                    if (!dependency) return;
+                    if (!dependency || dependency._placeholder) return;
                     const fromBar = this.bars[dependency._index];
                     const toBar = this.bars[task._index];
                     if (!fromBar || !toBar) return;
