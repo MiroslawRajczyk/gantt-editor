@@ -26,6 +26,7 @@ export default function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const taskListRef = useRef<HTMLDivElement>(null)
   const isSyncingRef = useRef(false)
+  const scrollCleanupRef = useRef<(() => void) | null>(null)
   const lhsFocusIdRef = useRef<string | null>(null)
 
   const onSync = useCallback(async () => {
@@ -104,6 +105,8 @@ export default function App() {
     const listEl = taskListRef.current
     if (!listEl) return
 
+    scrollCleanupRef.current?.()
+
     const syncGanttToList = () => {
       if (isSyncingRef.current) return
       isSyncingRef.current = true
@@ -120,6 +123,11 @@ export default function App() {
 
     ganttContainer.addEventListener('scroll', syncGanttToList)
     listEl.addEventListener('scroll', syncListToGantt)
+
+    scrollCleanupRef.current = () => {
+      ganttContainer.removeEventListener('scroll', syncGanttToList)
+      listEl.removeEventListener('scroll', syncListToGantt)
+    }
   }, [])
 
   const reportSummary = (r: SyncReport): string =>

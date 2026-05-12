@@ -119,8 +119,10 @@ export function GanttPanel({
 
     if (frappeTasks.length === 0) {
       if (ganttRef.current) {
+        const oldContainer = (ganttRef.current as any).$container as HTMLElement | null
         ganttRef.current.clear()
         ganttRef.current = null
+        oldContainer?.remove()
       }
       return
     }
@@ -132,7 +134,7 @@ export function GanttPanel({
       if ((ganttRef.current as any)?.bar_being_dragged) return
 
       const gantt = ganttRef.current as any
-      const gc = containerRef.current.querySelector('.gantt-container') as HTMLElement | null
+      const gc = gantt.$container as HTMLElement | null
       const oldGanttStart = gantt.gantt_start ? new Date(gantt.gantt_start) : null
       const sl = gc?.scrollLeft ?? 0
       const st = gc?.scrollTop ?? 0
@@ -210,9 +212,7 @@ export function GanttPanel({
         on_click: (task) => ganttClickRef.current(task),
       })
 
-      const ganttContainer = containerRef.current.querySelector(
-        '.gantt-container',
-      ) as HTMLElement | null
+      const ganttContainer = (ganttRef.current as any)?.$container as HTMLElement | null
       if (ganttContainer) {
         ganttContainer.style.height = `${panelHeight}px`
         onContainerReadyRef.current(ganttContainer)
