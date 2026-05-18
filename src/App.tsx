@@ -16,11 +16,12 @@ const MAX_PCT = 70
 const DEFAULT_PCT = 30
 
 export default function App() {
-  const { tasks, setTasks, addTask, removeTask, updateTask, reorderTask, clearTasks } = useTasks()
+  const { tasks, setTasks, commitTask, removeTask, updateTask, reorderTask, clearTasks } = useTasks()
   const { config, setConfig } = useClickUpConfig()
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
+  const [newTaskDraft, setNewTaskDraft] = useState<GanttTask | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [lastReport, setLastReport] = useState<SyncReport | null>(null)
   const [filters, setFilters] = useState<Filter[]>([])
@@ -89,6 +90,18 @@ export default function App() {
     },
     [tasks, updateTask],
   )
+
+  const handleAddTask = useCallback(() => {
+    const t = new Date()
+    t.setHours(0, 0, 0, 0)
+    const end = new Date(t)
+    end.setDate(end.getDate() + 7)
+    setNewTaskDraft({ id: crypto.randomUUID(), name: 'New task', start: t, end, progress: 0 })
+  }, [])
+
+  const handleDraftUpdate = useCallback((patch: Partial<GanttTask>) => {
+    setNewTaskDraft(prev => prev ? { ...prev, ...patch } : null)
+  }, [])
 
   const handleToggleDependency = useCallback(
     (sourceId: string, targetId: string) => {
@@ -186,7 +199,7 @@ export default function App() {
             setFilters={setFilters}
             matchMode={matchMode}
             setMatchMode={setMatchMode}
-            onAdd={addTask}
+            onAdd={handleAddTask}
             onClear={() => { if (confirm('Remove all tasks?')) clearTasks() }}
             onRemove={removeTask}
             onUpdate={handleTaskUpdate}
@@ -230,6 +243,20 @@ export default function App() {
           />
         ) : null
       })()}
+      {newTaskDraft && (
+        <TaskDetailPopup
+          task={newTaskDraft}
+          allTasks={tasks}
+          onClose={() => setNewTaskDraft(null)}
+          onUpdate={handleDraftUpdate}
+          onCommit={() => { commitTask(newTaskDraft); setNewTaskDraft(null) }}
+          isCreateMode
+          clickupToken={config?.token}
+          clickupTeamId={config?.teamId}
+          clickupListId={config?.listId}
+          clickupSpaceId={config?.spaceId}
+        />
+      )}
     </div>
   )
 }

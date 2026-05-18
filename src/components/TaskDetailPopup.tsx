@@ -9,6 +9,8 @@ interface Props {
   allTasks: GanttTask[]
   onClose: () => void
   onUpdate: (patch: Partial<GanttTask>) => void
+  onCommit?: () => void
+  isCreateMode?: boolean
   clickupToken?: string
   clickupTeamId?: string
   clickupListId?: string
@@ -102,11 +104,13 @@ function StatusSelector({
   onChange,
   token,
   listId,
+  showWhenEmpty,
 }: {
   value: string | undefined
   onChange: (v: string) => void
   token: string | undefined
   listId: string | undefined
+  showWhenEmpty?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [statuses, setStatuses] = useState<ClickUpStatus[]>([])
@@ -118,7 +122,7 @@ function StatusSelector({
   const canEdit = !!(token && listId)
 
   useEffect(() => {
-    if (!canEdit || !value || statuses.length > 0 || loading) return
+    if (!canEdit || statuses.length > 0 || loading) return
     setLoading(true)
     getListStatuses(token!, listId!)
       .then(s => { setStatuses(s); setError(null) })
@@ -148,7 +152,7 @@ function StatusSelector({
   const current = statuses.find(s => s.status === value)
   const badgeStyle = current?.color ? { background: current.color, color: '#fff', borderColor: current.color } : {}
 
-  if (!value) return null
+  if (!value && !showWhenEmpty) return null
 
   if (!canEdit) {
     return <span className="tdp-status-badge">{value}</span>
@@ -158,13 +162,13 @@ function StatusSelector({
     <div className="tdp-status-wrap">
       <button
         ref={ref}
-        className="tdp-status-badge tdp-status-badge--btn"
+        className={`tdp-status-badge tdp-status-badge--btn${!value ? ' tdp-status-badge--empty' : ''}`}
         style={badgeStyle}
         onClick={handleOpen}
         type="button"
         title="Change status"
       >
-        {value}
+        {value ?? <span className="tdp-status-placeholder">Set status</span>}
         <span className="tdp-chev">▾</span>
       </button>
       {open && (
@@ -188,7 +192,7 @@ function StatusSelector({
   )
 }
 
-export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToken, clickupTeamId, clickupListId, clickupSpaceId }: Props) {
+export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, onCommit, isCreateMode, clickupToken, clickupTeamId, clickupListId, clickupSpaceId }: Props) {
   const [nameDraft, setNameDraft] = useState(task.name)
   const [descDraft, setDescDraft] = useState(task.description ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -199,6 +203,14 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
   const [spaceTags, setSpaceTags] = useState<Tag[]>([])
   const [tagsLoading, setTagsLoading] = useState(false)
   const [tagsError, setTagsError] = useState<string | null>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isCreateMode) {
+      titleInputRef.current?.focus()
+      titleInputRef.current?.select()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setNameDraft(task.name)
@@ -295,12 +307,16 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
 
         {/* Top bar */}
         <div className="tdp-topbar">
-          <span className="tdp-id">TASK-{task.id.slice(0, 8).toUpperCase()}</span>
+          {isCreateMode
+            ? <span className="tdp-id tdp-id--draft">New task</span>
+            : <span className="tdp-id">TASK-{task.id.slice(0, 8).toUpperCase()}</span>
+          }
           <StatusSelector
             value={task.status}
             onChange={v => onUpdate({ status: v })}
             token={clickupToken}
             listId={clickupListId}
+            showWhenEmpty={isCreateMode}
           />
           <div className="tdp-topbar-spacer" />
           {clickupUrl && (
@@ -320,6 +336,7 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
           <div className="tdp-hero">
             <PriorityPill value={task.priority} onChange={v => onUpdate({ priority: v })} />
             <input
+              ref={titleInputRef}
               className="tdp-title"
               value={nameDraft}
               onChange={e => setNameDraft(e.target.value)}
@@ -469,6 +486,22 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, clickupToke
             />
           </div>
         </div>
+        {isCreateMode && (
+          <div className="tdp-footer">
+            <button type="button" className="tdp-footer__cancel" onClick={onClose}>Cancel</button>
+            <button
+              type="button"
+              className="tdp-footer__create"
+              onClick={() => {
+                const trimmed = nameDraft.trim()
+                if (trimmed && trimmed !== task.name) onUpdate({ name: trimmed })
+                onCommit?.()
+              }}
+            >
+              Create task
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

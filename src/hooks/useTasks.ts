@@ -68,6 +68,10 @@ export function useTasks() {
     ])
   }
 
+  function commitTask(t: GanttTask) {
+    setTasks(prev => [...prev, t])
+  }
+
   function removeTask(id: string) {
     setTasks(prev => prev.filter(t => t.id !== id))
   }
@@ -90,5 +94,5 @@ export function useTasks() {
     setTasks([])
   }
 
-  return { tasks, setTasks, addTask, removeTask, updateTask, reorderTask, clearTasks }
+  return { tasks, setTasks, addTask, commitTask, removeTask, updateTask, reorderTask, clearTasks }
 }

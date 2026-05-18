@@ -1385,3 +1385,53 @@
 .tdp-desc::placeholder { color: var(--text-dim); }
 .tdp-desc:hover { border-color: var(--border); }
 .tdp-desc:focus { outline: none; border-color: var(--accent); background: var(--accent-soft); }
+
+.tdp-id--draft {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(124, 133, 245, 0.3);
+}
+
+.tdp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.tdp-footer__cancel {
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-mid);
+  cursor: pointer;
+}
+.tdp-footer__cancel:hover { background: var(--surface-3); }
+
+.tdp-footer__create {
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--accent-strong);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.tdp-footer__create:hover { background: var(--accent-strong); }
+
+.tdp-status-badge--empty {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+.tdp-status-placeholder {
+  font-style: italic;
+}
