@@ -3,6 +3,7 @@ import type { Assignee, GanttTask, Tag } from '../types'
 import { getListStatuses, getSpaceTags, listTeamMembers, type ClickUpStatus, type TeamMember } from '../lib/clickup'
 import { AssigneePicker } from './AssigneePicker'
 import { TagPicker } from './TagPicker'
+import { DatePicker } from './DatePicker'
 
 interface Props {
   task: GanttTask
@@ -24,9 +25,6 @@ const PRIORITIES: Record<number, { label: string; color: string }> = {
   4: { label: 'Low', color: '#94a3b8' },
 }
 
-function toDateInput(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
 
 function getInitials(name: string): string {
   return name
@@ -431,29 +429,17 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, onCommit, i
             {/* Dates */}
             <div className="tdp-label">Dates</div>
             <div className="tdp-value">
-              <label className="tdp-date-pill">
-                <input
-                  type="date"
-                  value={task.start ? toDateInput(task.start) : ''}
-                  onChange={e => {
-                    if (!e.target.value) { onUpdate({ start: undefined }); return }
-                    const d = new Date(e.target.value)
-                    if (!isNaN(d.getTime())) onUpdate({ start: d, ...(task.end && d > task.end ? { end: d } : {}) })
-                  }}
-                />
-              </label>
+              <DatePicker
+                value={task.start}
+                onChange={d => onUpdate({ start: d, ...(task.end && d && d > task.end ? { end: d } : {}) })}
+                title="Start date"
+              />
               <span className="tdp-date-arrow">→</span>
-              <label className="tdp-date-pill">
-                <input
-                  type="date"
-                  value={task.end ? toDateInput(task.end) : ''}
-                  onChange={e => {
-                    if (!e.target.value) { onUpdate({ end: undefined }); return }
-                    const d = new Date(e.target.value)
-                    if (!isNaN(d.getTime())) onUpdate({ end: d, ...(task.start && d < task.start ? { start: d } : {}) })
-                  }}
-                />
-              </label>
+              <DatePicker
+                value={task.end}
+                onChange={d => onUpdate({ end: d, ...(task.start && d && d < task.start ? { start: d } : {}) })}
+                title="Due date"
+              />
               {task.start && task.end && (
                 <span className="tdp-date-days">
                   {Math.max(1, Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24)) + 1)} days
