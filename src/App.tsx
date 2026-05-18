@@ -141,7 +141,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <span className="app__logo">Gantt Editor</span>
+        <span className="app__logo">
+          <img src="/logo-header.png" alt="" className="app__logo-img" />
+          Gantt Editor
+        </span>
         <div className="app__header-spacer" />
         {lastReport && (
           <span

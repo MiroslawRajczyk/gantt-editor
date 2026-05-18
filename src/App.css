@@ -42,9 +42,19 @@
 }
 
 .app__logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.03em;
+}
+
+.app__logo-img {
+  width: 28px;
+  height: 28px;
+  display: block;
+  border-radius: 6px;
 }
 
 .app__header-spacer {
