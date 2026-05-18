@@ -3,7 +3,6 @@ import FrappeGantt from 'frappe-gantt'
 import type FrappeGanttNS from 'frappe-gantt'
 import type { GanttTask } from '../types'
 import { getAllSuccessors } from '../utils'
-import { FILTER_BAR_HEIGHT } from '../constants'
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -223,7 +222,7 @@ export function GanttPanel({
 
   return (
     <div className={`gantt-panel${connectMode ? ' gantt-panel--connecting' : ''}`}>
-      <div className="gantt-panel__toolbar">
+      <div className="gantt-panel__topbar">
         <button
           className={`gantt-panel__connect-btn${connectMode ? ' gantt-panel__connect-btn--active' : ''}`}
           onClick={toggleConnectMode}
@@ -235,8 +234,6 @@ export function GanttPanel({
           <span className="gantt-panel__connect-hint">{connectLabel}</span>
         )}
       </div>
-
-      <div className="gantt-panel__filter-spacer" style={{ height: FILTER_BAR_HEIGHT }} />
 
       {tasks.length === 0 && (
         <p className="gantt-panel__empty-msg">

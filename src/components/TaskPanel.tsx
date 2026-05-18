@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 import type { Filter, GanttTask } from '../types'
 import { TaskRow } from './TaskRow'
 import { FilterBar } from './FilterBar'
-import { GANTT_HEADER_HEIGHT, GANTT_TOOLBAR_HEIGHT } from '../constants'
+import { GANTT_HEADER_HEIGHT } from '../constants'
 
 interface Props {
   tasks: GanttTask[]
@@ -49,7 +49,7 @@ export function TaskPanel({ tasks, allTasks, filters, setFilters, matchMode, set
 
   return (
     <div className="task-panel">
-      <div className="task-panel__header" style={{ height: GANTT_HEADER_HEIGHT + GANTT_TOOLBAR_HEIGHT }}>
+      <div className="task-panel__header" style={{ height: GANTT_HEADER_HEIGHT }}>
         <h2 className="task-panel__title">Tasks</h2>
         <div className="task-panel__header-actions">
           <button className="task-panel__clear-btn" onClick={onClear}>Clear all</button>
