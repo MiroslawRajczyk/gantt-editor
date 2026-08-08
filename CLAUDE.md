@@ -84,6 +84,24 @@ Tasks without `start`/`end` are valid and appear in the left panel like any othe
 - **Rendering**: `GanttPanel` maps a dated milestone with `_milestone: true` and `custom_class: 'milestone'`. `make_bars` builds a `Milestone` (`src/lib/frappe-gantt/milestone.js`) instead of a `Bar`. `$bar` stays a `<rect>` (arrows, drag cache and `compute_start_end_date` read x/y/width/height attributes) sized `28 / √2` square, centred on the day cell; CSS rotates it 45° with `transform-box: fill-box` so no JS maintains a transform during drags. The subclass also drops the resize handles (and stubs `update_handle_position`, which the base dereferences unguarded every drag frame), pins `duration` to one day, and reports `date_change` with the same date twice instead of end − 1s.
 - **Colors**: `--g-milestone-color` (gantt `styles/themes.css`, light + dark) and `--milestone` (`src/App.css`, used by the left-panel glyph and the popup pill).
 
+## Export to PNG / PDF
+
+"Export" button in the app header opens `ExportDialog`. The exported picture is **redrawn from the task array**, never screenshotted from the live chart — the on-screen gantt mixes SVG bars with absolutely positioned HTML header divs and is clipped by `.gantt-container`'s scroll box. No new dependencies.
+
+**Renderer** (`src/lib/exportGantt.ts`): `buildGanttSvg(tasks, opts)` is pure, returns `{ body, width, height }`; `svgDocument(built, size?)` wraps it in an `<svg>` root. Left columns (`COLUMNS`/`COLUMN_ORDER`, `name` always present) then a timeline: two-band date header, unit grid, weekend shading (day view), bars/milestone diamonds, dependency arrows, today marker.
+- **Self-contained by necessity**: colors are hardcoded literals (copied from `src/App.css` `:root` and gantt `themes.css`) and the font is `Helvetica, Arial, sans-serif`. Once the SVG is detached from the document — or loaded through `<img>` for rasterization — `var()` cannot resolve and external fonts cannot load. The root always carries explicit `width`/`height`; Firefox has no intrinsic size otherwise.
+- **Time mapping** is one linear `pxPerDay` scale, but grid lines are drawn at *real* unit boundaries, so month columns are naturally 28–31 days wide with no drift. `daysBetween` rounds so DST never shifts a day.
+- Bars are clamped to the window; a clipped edge gets a white chevron so truncation is visible. Dateless rows render their LHS cells plus a muted `no dates` label.
+- Arrows are ported from `src/lib/frappe-gantt/arrow.js:13-89` with export geometry substituted for `gantt.options.padding` / `header_height`.
+- SVG has no text-overflow: `fitText` truncates with a real ellipsis, measuring through a module-level canvas 2D context.
+
+**Output** (`src/lib/exportOutput.ts`):
+- PNG — SVG → blob URL → `<img>` → canvas → `toBlob`. `effectiveScale` steps the requested 1x/2x/3x down when it would exceed the browser canvas dimension/area caps.
+- PDF — no PDF library. `printPages` writes an off-screen iframe with `@page` sized to the chosen paper and calls `print()`; the user picks "Save as PDF" (vector, selectable text).
+- `buildPages` splits row-outer / date-inner. Vertical slices come from rows-per-page, horizontal slices from `dateSlices` (greedy, cut on unit boundaries). Each page is a fresh `buildGanttSvg` call on a row+date subset, so the header band and LHS columns repeat for free. With `multipage` off, one page is emitted and the print CSS scales it to fit (`preserveAspectRatio="xMinYMin meet"`, never upscaled).
+
+**Dialog** (`src/components/ExportDialog.tsx`): format, task scope (visible / all / manual pick), dateless toggle, time period (fit / custom via the existing `DatePicker`), left columns, unit (auto/day/week/month), arrows + today + title, then paper/orientation/`Allow multiple pages` (PDF) or scale (PNG). Live preview re-runs the pure builder in a `useMemo`. Options persist to `localStorage['gantt-export-opts']` (dates and manual picks excluded).
+
 ## ClickUp two-way sync
 
 App talks to ClickUp REST API directly from browser. No backend — all sync logic client-side.

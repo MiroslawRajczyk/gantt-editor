@@ -6,6 +6,7 @@ import { GanttPanel } from './components/GanttPanel'
 import { Divider } from './components/Divider'
 import { ClickUpSettings } from './components/ClickUpSettings'
 import { TaskDetailPopup } from './components/TaskDetailPopup'
+import { ExportDialog } from './components/ExportDialog'
 import { applyFilters, getAllSuccessors } from './utils'
 import { syncWithClickUp } from './lib/sync'
 import type { Filter, GanttTask, SyncReport } from './types'
@@ -20,6 +21,7 @@ export default function App() {
   const { config, setConfig } = useClickUpConfig()
   const [leftPct, setLeftPct] = useState(DEFAULT_PCT)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
   const [newTaskDraft, setNewTaskDraft] = useState<GanttTask | null>(null)
   const [syncing, setSyncing] = useState(false)
@@ -183,6 +185,13 @@ export default function App() {
           </button>
         )}
         <button
+          className="app__export-btn"
+          onClick={() => setExportOpen(true)}
+          type="button"
+        >
+          Export
+        </button>
+        <button
           className="app__settings-btn"
           onClick={() => setSettingsOpen(true)}
           type="button"
@@ -228,6 +237,13 @@ export default function App() {
         }}
         onClose={() => setSettingsOpen(false)}
       />
+      {exportOpen && (
+        <ExportDialog
+          tasks={filteredTasks}
+          allTasks={tasks}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
       {detailTaskId && (() => {
         const t = tasks.find(task => task.id === detailTaskId)
         return t ? (
