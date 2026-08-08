@@ -9,9 +9,13 @@ export interface Tag {
   tag_fg?: string
 }
 
+export type TaskType = 'task' | 'milestone'
+
 export interface GanttTask {
   id: string
   name: string
+  // absent means 'task'. A milestone keeps start === end (single date).
+  type?: TaskType
   start?: Date
   end?: Date
   progress: number

@@ -5,11 +5,14 @@ import {
   createTask,
   fromClickUpDate,
   getAllTasks,
+  MILESTONE_ITEM_ID,
   removeTagFromTask,
   toClickUpDate,
   updateTask,
   type RemoteTask,
 } from './clickup'
+
+const isRemoteMilestone = (r: RemoteTask): boolean => r.custom_item_id === MILESTONE_ITEM_ID
 
 function sameDay(a: Date | null | undefined, b: Date | null | undefined): boolean {
   if (!a || !b) return !a && !b
@@ -105,17 +108,23 @@ export async function syncWithClickUp(
     const remotePriority = r.priority?.orderindex ? (Number(r.priority.orderindex) as 1 | 2 | 3 | 4) : undefined
     const remoteAssignees = r.assignees?.map(a => ({ id: a.id, username: a.username }))
     const remoteTags = r.tags?.map(t => ({ name: t.name, tag_bg: t.tag_bg, tag_fg: t.tag_fg }))
+    const remoteIsMs = isRemoteMilestone(r)
+    const localIsMs = l.type === 'milestone'
+    // A milestone carries one date locally; the due date is the one ClickUp shows
+    const remoteMsDate = remoteEnd ?? remoteStart
 
     if (remoteChangedSinceSync) {
       const fieldsChanged =
         l.name !== r.name ||
-        !sameDay(l.start, remoteStart) ||
-        !sameDay(l.end, remoteEnd)
+        localIsMs !== remoteIsMs ||
+        !sameDay(l.start, remoteIsMs ? remoteMsDate : remoteStart) ||
+        !sameDay(l.end, remoteIsMs ? remoteMsDate : remoteEnd)
       next.push({
         ...l,
         name: r.name,
-        start: remoteStart ?? undefined,
-        end: remoteEnd ?? undefined,
+        type: remoteIsMs ? 'milestone' : 'task',
+        start: (remoteIsMs ? remoteMsDate : remoteStart) ?? undefined,
+        end: (remoteIsMs ? remoteMsDate : remoteEnd) ?? undefined,
         status: r.status?.status,
         statusColor: r.status?.color,
         priority: remotePriority,
@@ -138,6 +147,7 @@ export async function syncWithClickUp(
       const remTagNames = [...remoteTagNames].filter(n => !localTagNames.has(n))
       const localDiffersFromRemote =
         l.name !== r.name ||
+        localIsMs !== remoteIsMs ||
         !sameDay(l.start, remoteStart) ||
         !sameDay(l.end, remoteEnd) ||
         l.priority !== remotePriority ||
@@ -156,6 +166,11 @@ export async function syncWithClickUp(
             ...(l.priority !== undefined ? { priority: l.priority } : {}),
             ...(l.description !== undefined ? { description: l.description } : {}),
             ...(l.status !== undefined ? { status: l.status } : {}),
+            // Only sent on a real type flip, so other custom task types in the
+            // workspace are never overwritten
+            ...(localIsMs !== remoteIsMs
+              ? { custom_item_id: localIsMs ? MILESTONE_ITEM_ID : null }
+              : {}),
             ...assigneesDiff,
           })
           await Promise.all([
@@ -177,6 +192,7 @@ export async function syncWithClickUp(
       const assigneeIds = (u.assignees ?? []).map(a => a.id).filter(id => id !== -1)
       const created = await createTask(token, listId, {
         name: u.name,
+        ...(u.type === 'milestone' ? { custom_item_id: MILESTONE_ITEM_ID } : {}),
         ...(u.start ? { start_date: toClickUpDate(u.start), start_date_time: false } : {}),
         ...(u.end ? { due_date: toClickUpDate(u.end), due_date_time: false } : {}),
         ...(u.priority !== undefined ? { priority: u.priority } : {}),
@@ -203,12 +219,17 @@ export async function syncWithClickUp(
   const linkedCuids = new Set(next.map(t => t.clickupId).filter((x): x is string => !!x))
   for (const r of remote) {
     if (linkedCuids.has(r.id)) continue
+    const remoteIsMs = isRemoteMilestone(r)
+    const rStart = fromClickUpDate(r.start_date)
+    const rEnd = fromClickUpDate(r.due_date)
+    const msDate = rEnd ?? rStart
     next.push({
       id: crypto.randomUUID(),
       clickupId: r.id,
       name: r.name,
-      start: fromClickUpDate(r.start_date) ?? undefined,
-      end: fromClickUpDate(r.due_date) ?? undefined,
+      type: remoteIsMs ? 'milestone' : 'task',
+      start: (remoteIsMs ? msDate : rStart) ?? undefined,
+      end: (remoteIsMs ? msDate : rEnd) ?? undefined,
       progress: 0,
       status: r.status?.status,
       statusColor: r.status?.color,

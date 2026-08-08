@@ -310,6 +310,20 @@
         }
     }
 
+    /* Milestone: the square bar rotated into a diamond. fill-box keeps the
+       rotation centred on the rect as its x changes during a drag. */
+    & .bar-wrapper.milestone .bar {
+        fill: var(--g-milestone-color);
+        outline: none;
+        transform-box: fill-box;
+        transform-origin: center;
+        transform: rotate(45deg);
+    }
+
+    & .bar-wrapper.milestone .bar-label {
+        font-weight: 600;
+    }
+
     & .bar-wrapper {
         cursor: pointer;
 

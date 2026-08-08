@@ -4,6 +4,7 @@
   --accent-strong: #5c67e8;
   --accent-soft: #f5f5ff;
   --danger: #e55;
+  --milestone: #f5a623;
   --danger-soft: #fff0f0;
   --surface: #fff;
   --surface-2: #fafafa;
@@ -394,6 +395,13 @@
   color: #bbb;
 }
 
+.task-row__date-ghost {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  visibility: hidden;
+}
+
 .task-row__date-field {
   display: flex;
   align-items: center;
@@ -463,6 +471,14 @@
 
 .task-row--drag-over {
   border-top: 2px solid #7c85f5;
+}
+
+.task-row__ms-glyph {
+  color: var(--milestone);
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: -4px;
 }
 
 /* ── Filter bar ──────────────────────────────────────────────────────────── */
@@ -1044,6 +1060,8 @@
 .tdp-title:focus { outline: none; border-color: var(--accent); background: var(--accent-soft); }
 
 /* Priority pill */
+.tdp-hero-pills { display: flex; align-items: center; gap: 8px; }
+
 .tdp-priority-wrap { position: relative; display: inline-block; }
 
 .tdp-pill {

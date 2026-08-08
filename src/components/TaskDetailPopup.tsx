@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Assignee, GanttTask, Tag } from '../types'
+import type { Assignee, GanttTask, Tag, TaskType } from '../types'
 import { getListStatuses, getSpaceTags, listTeamMembers, type ClickUpStatus, type TeamMember } from '../lib/clickup'
+import { isMilestone, typeChangePatch } from '../utils'
 import { AssigneePicker } from './AssigneePicker'
 import { TagPicker } from './TagPicker'
 import { DatePicker } from './DatePicker'
@@ -17,6 +18,9 @@ interface Props {
   clickupListId?: string
   clickupSpaceId?: string
 }
+
+// Keep in sync with --milestone in App.css and --g-milestone-color in the gantt theme
+const MILESTONE_COLOR = '#f5a623'
 
 const PRIORITIES: Record<number, { label: string; color: string }> = {
   1: { label: 'Urgent', color: '#ef4444' },
@@ -91,6 +95,59 @@ function PriorityPill({ value, onChange }: { value: GanttTask['priority']; onCha
               </button>
             </>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TypePill({ value, onChange }: { value: TaskType; onChange: (v: TaskType) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const fn = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node) && !ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    setTimeout(() => document.addEventListener('mousedown', fn), 0)
+    return () => document.removeEventListener('mousedown', fn)
+  }, [open])
+
+  const ms = value === 'milestone'
+
+  return (
+    <div className="tdp-priority-wrap">
+      <button
+        ref={ref}
+        className="tdp-pill"
+        style={ms ? { color: MILESTONE_COLOR, borderColor: MILESTONE_COLOR + '44' } : {}}
+        onClick={() => setOpen(o => !o)}
+        type="button"
+        title="Task type"
+      >
+        {ms ? '◆ Milestone' : 'Task'}
+        <span className="tdp-chev">▾</span>
+      </button>
+      {open && (
+        <div ref={menuRef} className="tdp-menu">
+          <button
+            className={!ms ? 'is-active' : ''}
+            onClick={() => { onChange('task'); setOpen(false) }}
+            type="button"
+          >
+            <span>▬</span>
+            Task
+          </button>
+          <button
+            className={ms ? 'is-active' : ''}
+            onClick={() => { onChange('milestone'); setOpen(false) }}
+            type="button"
+          >
+            <span style={{ color: MILESTONE_COLOR }}>◆</span>
+            Milestone
+          </button>
         </div>
       )}
     </div>
@@ -298,6 +355,7 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, onCommit, i
   }
 
   const clickupUrl = task.clickupId ? `https://app.clickup.com/t/${task.clickupId}` : null
+  const ms = isMilestone(task)
 
   return (
     <div className="tdp-overlay" onClick={onClose}>
@@ -306,7 +364,7 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, onCommit, i
         {/* Top bar */}
         <div className="tdp-topbar">
           {isCreateMode
-            ? <span className="tdp-id tdp-id--draft">New task</span>
+            ? <span className="tdp-id tdp-id--draft">{ms ? 'New milestone' : 'New task'}</span>
             : <span className="tdp-id">TASK-{task.id.slice(0, 8).toUpperCase()}</span>
           }
           <StatusSelector
@@ -332,7 +390,24 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, onCommit, i
 
           {/* Hero */}
           <div className="tdp-hero">
-            <PriorityPill value={task.priority} onChange={v => onUpdate({ priority: v })} />
+            <div className="tdp-hero-pills">
+              <TypePill
+                value={task.type ?? 'task'}
+                onChange={v => {
+                  const patch = typeChangePatch(task, v)
+                  // Keep the placeholder name of an untouched draft in step with its type
+                  const auto = v === 'milestone' ? 'New milestone' : 'New task'
+                  const stale = v === 'milestone' ? 'New task' : 'New milestone'
+                  if (isCreateMode && nameDraft.trim() === stale) {
+                    setNameDraft(auto)
+                    onUpdate({ ...patch, name: auto })
+                    return
+                  }
+                  onUpdate(patch)
+                }}
+              />
+              <PriorityPill value={task.priority} onChange={v => onUpdate({ priority: v })} />
+            </div>
             <input
               ref={titleInputRef}
               className="tdp-title"
@@ -427,23 +502,33 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, onCommit, i
             </div>
 
             {/* Dates */}
-            <div className="tdp-label">Dates</div>
+            <div className="tdp-label">{ms ? 'Date' : 'Dates'}</div>
             <div className="tdp-value">
-              <DatePicker
-                value={task.start}
-                onChange={d => onUpdate({ start: d, ...(task.end && d && d > task.end ? { end: d } : {}) })}
-                title="Start date"
-              />
-              <span className="tdp-date-arrow">→</span>
-              <DatePicker
-                value={task.end}
-                onChange={d => onUpdate({ end: d, ...(task.start && d && d < task.start ? { start: d } : {}) })}
-                title="Due date"
-              />
-              {task.start && task.end && (
-                <span className="tdp-date-days">
-                  {Math.max(1, Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24)) + 1)} days
-                </span>
+              {ms ? (
+                <DatePicker
+                  value={task.end}
+                  onChange={d => onUpdate({ start: d, end: d })}
+                  title="Milestone date"
+                />
+              ) : (
+                <>
+                  <DatePicker
+                    value={task.start}
+                    onChange={d => onUpdate({ start: d, ...(task.end && d && d > task.end ? { end: d } : {}) })}
+                    title="Start date"
+                  />
+                  <span className="tdp-date-arrow">→</span>
+                  <DatePicker
+                    value={task.end}
+                    onChange={d => onUpdate({ end: d, ...(task.start && d && d < task.start ? { start: d } : {}) })}
+                    title="Due date"
+                  />
+                  {task.start && task.end && (
+                    <span className="tdp-date-days">
+                      {Math.max(1, Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24)) + 1)} days
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
@@ -484,7 +569,7 @@ export function TaskDetailPopup({ task, allTasks, onClose, onUpdate, onCommit, i
                 onCommit?.()
               }}
             >
-              Create task
+              {ms ? 'Create milestone' : 'Create task'}
             </button>
           </div>
         )}

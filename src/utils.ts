@@ -1,4 +1,14 @@
-import type { Filter, GanttTask } from './types'
+import type { Filter, GanttTask, TaskType } from './types'
+
+export const isMilestone = (t: GanttTask): boolean => t.type === 'milestone'
+
+// A milestone holds a single date in both start and end. Converting a dated
+// task keeps its due date; converting back leaves it as a one-day task.
+export function typeChangePatch(t: GanttTask, next: TaskType): Partial<GanttTask> {
+  if (next !== 'milestone') return { type: 'task' }
+  const d = t.end ?? t.start
+  return { type: 'milestone', start: d, end: d }
+}
 
 export function taskMatchesFilter(task: GanttTask, f: Filter): boolean {
   switch (f.type) {

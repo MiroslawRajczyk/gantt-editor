@@ -22,9 +22,14 @@ export interface List {
   name: string
 }
 
+// ClickUp custom task type id of the built-in "Milestone" type.
+// null / absent custom_item_id means a plain task.
+export const MILESTONE_ITEM_ID = 1
+
 export interface RemoteTask {
   id: string
   name: string
+  custom_item_id?: number | null
   start_date: string | null
   due_date: string | null
   date_updated: string
@@ -45,6 +50,7 @@ export interface TeamMember {
 
 export interface CreateTaskBody {
   name: string
+  custom_item_id?: number | null
   start_date?: string
   due_date?: string
   start_date_time?: boolean

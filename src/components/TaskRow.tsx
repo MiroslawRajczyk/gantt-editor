@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { GanttTask } from '../types'
 import { GANTT_ROW_HEIGHT } from '../constants'
+import { isMilestone } from '../utils'
 import { DatePicker } from './DatePicker'
 
 interface Props {
@@ -36,9 +37,11 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
     setEditing(false)
   }
 
+  const ms = isMilestone(task)
+
   return (
     <div
-      className={`task-row${isDragOver ? ' task-row--drag-over' : ''}`}
+      className={`task-row${isDragOver ? ' task-row--drag-over' : ''}${ms ? ' task-row--milestone' : ''}`}
       style={{ height: GANTT_ROW_HEIGHT }}
       draggable
       onDragStart={() => onDragStart(index)}
@@ -47,6 +50,8 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
       onDragEnd={onDragEnd}
     >
       <span className="task-row__grip" aria-hidden="true">⠿</span>
+
+      {ms && <span className="task-row__ms-glyph" title="Milestone" aria-hidden="true">◆</span>}
 
       <div className="task-row__name">
         {editing ? (
@@ -73,17 +78,35 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
       </div>
 
       <div className="task-row__dates">
-        <DatePicker
-          value={task.start}
-          onChange={d => onUpdate({ start: d, ...(task.end && d && d > task.end ? { end: d } : {}) })}
-          title="Start date"
-        />
-        <span className="task-row__date-sep">→</span>
-        <DatePicker
-          value={task.end}
-          onChange={d => onUpdate({ end: d, ...(task.start && d && d < task.start ? { start: d } : {}) })}
-          title="Due date"
-        />
+        {ms ? (
+          <>
+            {/* Hidden stand-in for the start picker so the milestone date stays
+                in the same column as every other row's due date */}
+            <span className="task-row__date-ghost" aria-hidden="true">
+              <DatePicker value={undefined} onChange={() => {}} title="" />
+              <span className="task-row__date-sep">→</span>
+            </span>
+            <DatePicker
+              value={task.end}
+              onChange={d => onUpdate({ start: d, end: d })}
+              title="Milestone date"
+            />
+          </>
+        ) : (
+          <>
+            <DatePicker
+              value={task.start}
+              onChange={d => onUpdate({ start: d, ...(task.end && d && d > task.end ? { end: d } : {}) })}
+              title="Start date"
+            />
+            <span className="task-row__date-sep">→</span>
+            <DatePicker
+              value={task.end}
+              onChange={d => onUpdate({ end: d, ...(task.start && d && d < task.start ? { start: d } : {}) })}
+              title="Due date"
+            />
+          </>
+        )}
       </div>
 
       <button

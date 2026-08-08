@@ -28,7 +28,7 @@ React 18 + TypeScript + Vite frontend, static files via nginx, multi-stage Docke
 
 **Split-panel layout** (`App.tsx`): left panel (task list) + right panel (Gantt chart) split by draggable `Divider`. Panel widths stored as percentage (15–70%).
 
-**Core types** (`src/types.ts`): `GanttTask` has `id`, `name`, `start?: Date`, `end?: Date` (both optional — a task without dates is valid and shown only in the left panel), `progress: number` (in data model, not shown in chart), `dependencies?: string[]` (predecessor *local* ids), `clickupId?: string` (set when task linked to ClickUp), and ClickUp-synced optional fields: `status?: string`, `priority?: 1|2|3|4`, `assignees?: Assignee[]`, `tags?: Tag[]`, `description?: string`. `Assignee` is `{ id: number; username: string }` — stores ClickUp user ID (needed to push assignee changes via API). Migrated tasks from old `string[]` format get `id: -1` as sentinel; those are display-only and excluded from ClickUp pushes. `Tag` is `{ name: string; tag_bg?: string; tag_fg?: string }`.
+**Core types** (`src/types.ts`): `GanttTask` has `id`, `name`, `type?: 'task' | 'milestone'` (absent means task — see Milestones section), `start?: Date`, `end?: Date` (both optional — a task without dates is valid and shown only in the left panel), `progress: number` (in data model, not shown in chart), `dependencies?: string[]` (predecessor *local* ids), `clickupId?: string` (set when task linked to ClickUp), and ClickUp-synced optional fields: `status?: string`, `priority?: 1|2|3|4`, `assignees?: Assignee[]`, `tags?: Tag[]`, `description?: string`. `Assignee` is `{ id: number; username: string }` — stores ClickUp user ID (needed to push assignee changes via API). Migrated tasks from old `string[]` format get `id: -1` as sentinel; those are display-only and excluded from ClickUp pushes. `Tag` is `{ name: string; tag_bg?: string; tag_fg?: string }`.
 
 **State and persistence** (`src/hooks/useTasks.ts`): all tasks in single `useState` array, persisted to `localStorage` under key `'gantt-tasks'`. First load creates example task. `updateTask` uses functional `setState` form so sequential calls compose correctly (React 18 batches). `deserialize` runs a migration on load: if `assignees` entries are strings (old format), they're wrapped as `{ id: -1, username }`; absent `start`/`end` fields deserialize to `undefined` (not Invalid Date).
 
@@ -38,6 +38,7 @@ Local fork changes:
 - `get_all_dependent_tasks()` BFS — original prematurely added nodes to `out` before computing `to_process`, limiting traversal to one level. Fixed with `Set`-based BFS.
 - `bind_bar_events` — dependents included in drag group during resize. Fixed: only include dependents when `is_dragging` true.
 - `_placeholder` task support (see Dateless tasks section below).
+- `milestone.js` (new file) + `make_bars` dispatch on `_milestone` (see Milestones section below).
 
 **Alignment constants** (`src/constants.ts`): frappe-gantt row/header geometry hardcoded in library. `GANTT_ROW_HEIGHT` (48px) and `GANTT_HEADER_HEIGHT` (85px) must stay in sync with frappe-gantt defaults. LHS `TaskPanel` header height = `GANTT_HEADER_HEIGHT + GANTT_TOOLBAR_HEIGHT` to account for toolbar above gantt.
 
@@ -74,6 +75,15 @@ Tasks without `start`/`end` are valid and appear in the left panel like any othe
 - `make_bars`: bar group for placeholder tasks gets `visibility:hidden; pointer-events:none`
 - `make_arrows`: arrows are skipped when either endpoint task has `_placeholder: true`
 
+## Milestones
+
+`type: 'milestone'` marks a zero-duration task (ClickUp custom task type id 1). A milestone keeps **one date in both `start` and `end`**; every writer keeps them equal. A dateless milestone is legal and follows the `_placeholder` path above.
+
+- **Conversion** (`src/utils.ts`): `isMilestone(t)` and `typeChangePatch(t, next)`. Task → milestone keeps the **due date** (`end ?? start`); milestone → task leaves a one-day task.
+- **UI**: `TypePill` in `TaskDetailPopup`'s hero (also the create path — the "+ Add task" draft popup); `TaskRow` shows a `◆` glyph and a single date picker, with a hidden `.task-row__date-ghost` stand-in so the date stays in the due-date column.
+- **Rendering**: `GanttPanel` maps a dated milestone with `_milestone: true` and `custom_class: 'milestone'`. `make_bars` builds a `Milestone` (`src/lib/frappe-gantt/milestone.js`) instead of a `Bar`. `$bar` stays a `<rect>` (arrows, drag cache and `compute_start_end_date` read x/y/width/height attributes) sized `28 / √2` square, centred on the day cell; CSS rotates it 45° with `transform-box: fill-box` so no JS maintains a transform during drags. The subclass also drops the resize handles (and stubs `update_handle_position`, which the base dereferences unguarded every drag frame), pins `duration` to one day, and reports `date_change` with the same date twice instead of end − 1s.
+- **Colors**: `--g-milestone-color` (gantt `styles/themes.css`, light + dark) and `--milestone` (`src/App.css`, used by the left-panel glyph and the popup pill).
+
 ## ClickUp two-way sync
 
 App talks to ClickUp REST API directly from browser. No backend — all sync logic client-side.
@@ -92,7 +102,7 @@ App talks to ClickUp REST API directly from browser. No backend — all sync log
 
 **Conflict policy**: ClickUp wins only when its `date_updated` postdates last sync; otherwise local propagates up.
 
-**Synced fields**: `name`, `start`/`end` dates (optional; null/undefined preserved), `dependencies`, `priority` (push+pull; ClickUp int 1–4), `description` (push+pull), `assignees` (push+pull; push sends `{ add: [...ids], rem: [...ids] }` diff; sentinel id `-1` excluded), `status` (push+pull), `tags` (push+pull; per-tag add/remove via tag name).
+**Synced fields**: `name`, `start`/`end` dates (optional; null/undefined preserved), `dependencies`, `priority` (push+pull; ClickUp int 1–4), `description` (push+pull), `assignees` (push+pull; push sends `{ add: [...ids], rem: [...ids] }` diff; sentinel id `-1` excluded), `status` (push+pull), `tags` (push+pull; per-tag add/remove via tag name), `type` (push+pull via `custom_item_id`; `MILESTONE_ITEM_ID = 1` in `clickup.ts`). `custom_item_id` is only sent when the type actually flips, so other custom task types in the workspace are never overwritten; a remote milestone collapses `start`/`end` onto its due date. Milestone pushes fail if the space has the Milestones ClickApp disabled — the error lands in `report.errors`.
 
 **v1 limitations**: no baseline tracking → dependency *removals* don't propagate either direction (remove on both sides manually); local delete does not delete remote (`deleteTask` intentionally unexposed); no rate-limit backoff (ClickUp free tier ~100 req/min — surface 429s, retry manually); no realtime/webhook/auto-poll. Subtasks, comments, attachments, time tracking, `progress` not synced.
 

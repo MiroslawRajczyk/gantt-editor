@@ -19,6 +19,7 @@
     --g-today-highlight: #37352f;
     --g-popup-actions: #ebeff2;
     --g-weekend-highlight-color: #f7f7f7;
+    --g-milestone-color: #f5a623;
 }
 
 html[data-theme='dark'] {
@@ -42,4 +43,5 @@ html[data-theme='dark'] {
     --g-today-highlight: #999999;
     --g-popup-actions: #1a1a1a;
     --g-weekend-highlight-color: #0f0f0f;
+    --g-milestone-color: #fbbf24;
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import FrappeGantt from 'frappe-gantt'
 import type FrappeGanttNS from 'frappe-gantt'
 import type { GanttTask } from '../types'
-import { getAllSuccessors } from '../utils'
+import { getAllSuccessors, isMilestone } from '../utils'
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -106,12 +106,21 @@ export function GanttPanel({
   useEffect(() => {
     if (!containerRef.current) return
 
-    const frappeTasks = tasks.map(t =>
-      t.start && t.end
+    const frappeTasks = tasks.map(t => {
+      const deps = t.dependencies?.join(',') ?? ''
+      if (isMilestone(t)) {
+        // A milestone carries a single date; it is drawn as a diamond by the
+        // Milestone bar subclass in the vendored frappe-gantt fork.
+        const d = t.end ?? t.start
+        if (!d) return { id: t.id, name: t.name, _placeholder: true, progress: 0, dependencies: '' }
+        return { id: t.id, name: t.name, start: toDateStr(d), end: toDateStr(d),
+                 progress: 0, dependencies: deps, _milestone: true, custom_class: 'milestone' }
+      }
+      return t.start && t.end
         ? { id: t.id, name: t.name, start: toDateStr(t.start), end: toDateStr(t.end),
-            progress: t.progress, dependencies: t.dependencies?.join(',') ?? '' }
+            progress: t.progress, dependencies: deps }
         : { id: t.id, name: t.name, _placeholder: true, progress: 0, dependencies: '' }
-    ) as FrappeGanttNS.Task[]
+    }) as FrappeGanttNS.Task[]
 
     if (tasks.length === 0) {
       if (ganttRef.current) {
@@ -178,11 +187,13 @@ export function GanttPanel({
           if (!task.id) return
           const allTasks = tasksRef.current
           const prev = allTasks.find(t => t.id === task.id)
-          onDateChangeRef.current(task.id, start, end)
+          // A milestone keeps a single date on both fields
+          const newEnd = prev && isMilestone(prev) ? start : end
+          onDateChangeRef.current(task.id, start, newEnd)
           if (prev && prev.start && prev.end) {
             const startDelta = start.getTime() - prev.start.getTime()
             const prevDuration = prev.end.getTime() - prev.start.getTime()
-            const newDuration = end.getTime() - start.getTime()
+            const newDuration = newEnd.getTime() - start.getTime()
             const durationDelta = newDuration - prevDuration
             // Pure drag: start shifted, duration unchanged (within 2s for frappe-gantt's -1s end artifact)
             // Right-edge resize: start unchanged, end moved → durationDelta equals end delta

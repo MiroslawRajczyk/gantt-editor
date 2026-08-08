@@ -3,6 +3,7 @@ import { $, createSVG } from './svg_utils';
 
 import Arrow from './arrow';
 import Bar from './bar';
+import Milestone from './milestone';
 import Popup from './popup';
 
 import { DEFAULT_OPTIONS, DEFAULT_VIEW_MODES } from './defaults';
@@ -926,7 +927,9 @@ export default class Gantt {
 
     make_bars() {
         this.bars = this.tasks.map((task) => {
-            const bar = new Bar(this, task);
+            const bar = task._milestone
+                ? new Milestone(this, task)
+                : new Bar(this, task);
             this.layers.bar.appendChild(bar.group);
             if (task._placeholder) {
                 bar.group.setAttribute('style', 'visibility:hidden;pointer-events:none');
