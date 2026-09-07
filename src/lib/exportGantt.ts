@@ -8,6 +8,7 @@
 
 import type { GanttTask } from '../types'
 import { isMilestone } from '../utils'
+import { edgeKey } from './criticalPath'
 
 export type LhsColumn =
   | 'name' | 'start' | 'end' | 'duration' | 'status'
@@ -23,6 +24,11 @@ export interface ExportOptions {
   title?: string
   showToday: boolean
   showArrows: boolean
+  // Critical path, precomputed by the caller. Empty / absent means no
+  // highlighting; the sets must be computed over the whole task selection
+  // before pagination, since each page only ever sees a slice of the rows.
+  criticalIds?: ReadonlySet<string>
+  criticalEdges?: ReadonlySet<string>
 }
 
 export interface BuiltSvg {
@@ -83,6 +89,7 @@ const C = {
   milestone: '#f5a623',
   arrow: '#1f2937',
   today: '#37352f',
+  critical: '#e5484d', // mirrors --critical
 }
 
 const PRIORITY_LABELS: Record<number, string> = {
@@ -495,6 +502,9 @@ export function buildGanttSvg(tasks: GanttTask[], opts: ExportOptions): BuiltSvg
     }
 
     const cyRow = rowTop(i) + ROW_H / 2
+    // On the critical path the fill is left alone (a ClickUp status colour stays
+    // readable) and the outline carries the marking.
+    const crit = opts.criticalIds?.has(t.id) ?? false
 
     if (ms) {
       const centre = x(start) + ppd / 2
@@ -502,7 +512,8 @@ export function buildGanttSvg(tasks: GanttTask[], opts: ExportOptions): BuiltSvg
       const gx = cx(centre)
       parts.push(
         `<rect x="${r(gx - MS_SIDE / 2)}" y="${r(cyRow - MS_SIDE / 2)}" width="${MS_SIDE}" height="${MS_SIDE}" ` +
-        `fill="${C.milestone}" stroke="${darken(C.milestone)}" stroke-width="1" ` +
+        `fill="${C.milestone}" stroke="${crit ? C.critical : darken(C.milestone)}" ` +
+        `stroke-width="${crit ? 2 : 1}" ` +
         `transform="rotate(45 ${r(gx)} ${r(cyRow)})"/>`,
       )
       geoms.set(t.id, {
@@ -523,7 +534,8 @@ export function buildGanttSvg(tasks: GanttTask[], opts: ExportOptions): BuiltSvg
 
     parts.push(
       `<rect x="${r(cx(x0))}" y="${r(top)}" width="${r(w)}" height="${BAR_H}" rx="3" ` +
-      `fill="${fill}" stroke="${darken(fill)}" stroke-width="1"/>`,
+      `fill="${fill}" stroke="${crit ? C.critical : darken(fill)}" ` +
+      `stroke-width="${crit ? 2 : 1}"/>`,
     )
 
     // chevrons mark an edge that runs outside the exported window
@@ -559,7 +571,8 @@ export function buildGanttSvg(tasks: GanttTask[], opts: ExportOptions): BuiltSvg
         const fromG = geoms.get(depId)
         const toG = geoms.get(t.id)
         if (!fromG || !toG) continue
-        parts.push(arrowPath(fromG, toG, cx))
+        parts.push(arrowPath(fromG, toG, cx,
+          opts.criticalEdges?.has(edgeKey(depId, t.id)) ?? false))
       }
     }
   }
@@ -569,7 +582,9 @@ export function buildGanttSvg(tasks: GanttTask[], opts: ExportOptions): BuiltSvg
 
 // Elbow connector, ported from src/lib/frappe-gantt/arrow.js:13-89 with the
 // export geometry substituted for the library's padding / header_height.
-function arrowPath(from: BarGeom, to: BarGeom, cx: (v: number) => number): string {
+function arrowPath(
+  from: BarGeom, to: BarGeom, cx: (v: number) => number, critical: boolean,
+): string {
   let startX = from.x + from.w / 2
   while (to.x < startX + ARROW_PAD && startX > from.x + ARROW_PAD) startX -= 10
   startX -= 10
@@ -612,7 +627,8 @@ function arrowPath(from: BarGeom, to: BarGeom, cx: (v: number) => number): strin
         ` L ${r(cx(endX))} ${r(endY)}` +
         ` m -5 -5 l 5 5 l -5 5`
   }
-  return `<path d="${d}" fill="none" stroke="${C.arrow}" stroke-width="1.2"/>`
+  return `<path d="${d}" fill="none" stroke="${critical ? C.critical : C.arrow}" ` +
+         `stroke-width="${critical ? 2.4 : 1.2}"/>`
 }
 
 /* ------------------------------------------------------------- svg document */

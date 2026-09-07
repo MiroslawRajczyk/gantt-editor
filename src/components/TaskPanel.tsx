@@ -19,9 +19,10 @@ interface Props {
   onReorder: (fromIndex: number, toIndex: number) => void
   onOpenDetail: (id: string) => void
   listRef: RefObject<HTMLDivElement>
+  criticalIds: Set<string>
 }
 
-export function TaskPanel({ tasks, allTasks, filters, setFilters, matchMode, setMatchMode, onAdd, onClear, onRemove, onUpdate, onReorder, onOpenDetail, listRef }: Props) {
+export function TaskPanel({ tasks, allTasks, filters, setFilters, matchMode, setMatchMode, onAdd, onClear, onRemove, onUpdate, onReorder, onOpenDetail, listRef, criticalIds }: Props) {
   const dragIndexRef = useRef<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
@@ -85,6 +86,7 @@ export function TaskPanel({ tasks, allTasks, filters, setFilters, matchMode, set
             onDrop={handleDrop}
             onDragEnd={handleDragEnd}
             isDragOver={dragOverIndex === idx}
+            isCritical={criticalIds.has(task.id)}
           />
         ))}
       </div>

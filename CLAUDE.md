@@ -39,6 +39,7 @@ Local fork changes:
 - `bind_bar_events` — dependents included in drag group during resize. Fixed: only include dependents when `is_dragging` true.
 - `_placeholder` task support (see Dateless tasks section below).
 - `milestone.js` (new file) + `make_bars` dispatch on `_milestone` (see Milestones section below).
+- `Bar.refresh()` rewrites the group's `class` attribute wholesale instead of `classList.add(custom_class)`. The original threw `InvalidCharacterError` on a multi-token `custom_class` (`'milestone critical'`) and never dropped a token removed since the last refresh.
 
 **Alignment constants** (`src/constants.ts`): frappe-gantt row/header geometry hardcoded in library. `GANTT_ROW_HEIGHT` (48px) and `GANTT_HEADER_HEIGHT` (85px) must stay in sync with frappe-gantt defaults. LHS `TaskPanel` header height = `GANTT_HEADER_HEIGHT + GANTT_TOOLBAR_HEIGHT` to account for toolbar above gantt.
 
@@ -84,6 +85,20 @@ Tasks without `start`/`end` are valid and appear in the left panel like any othe
 - **Rendering**: `GanttPanel` maps a dated milestone with `_milestone: true` and `custom_class: 'milestone'`. `make_bars` builds a `Milestone` (`src/lib/frappe-gantt/milestone.js`) instead of a `Bar`. `$bar` stays a `<rect>` (arrows, drag cache and `compute_start_end_date` read x/y/width/height attributes) sized `28 / √2` square, centred on the day cell; CSS rotates it 45° with `transform-box: fill-box` so no JS maintains a transform during drags. The subclass also drops the resize handles (and stubs `update_handle_position`, which the base dereferences unguarded every drag frame), pins `duration` to one day, and reports `date_change` with the same date twice instead of end − 1s.
 - **Colors**: `--g-milestone-color` (gantt `styles/themes.css`, light + dark) and `--milestone` (`src/App.css`, used by the left-panel glyph and the popup pill).
 
+## Critical path
+
+`src/lib/criticalPath.ts` — `computeCriticalPath(tasks)` returns `{ taskIds: Set<string>, edges: Set<string> }`, edges keyed `` `${predecessorId}->${successorId}` `` by the exported `edgeKey`. `EMPTY_CRITICAL` is a module const so the empty case keeps a stable identity for `useMemo` / effect dep arrays.
+
+**Definition: longest dependency chain**, weighted by task duration, gaps between bars ignored. *Not* zero-slack CPM — dates here are hand-set, so a slack rule would drop tasks from the chain merely because the user left room between two bars. Duration is inclusive days (`end − start + 1`), milestones count 0. Only tasks with both dates are nodes; a dateless task breaks the chain, matching the fact that it has no bar and no arrows.
+
+Two memoized walks: `chainTo` (longest chain ending at a node, over predecessors) and `chainFrom` (longest chain starting at it, over successors, using an inverted index — not `getAllSuccessors`). `maxTotal` is the max of `chainTo` over nodes that *have* a predecessor, so a lone long task is never reported as the path. A node is critical when `chainTo + chainFrom − duration === maxTotal`; an edge is critical when both ends are and `chainTo(from) + chainFrom(to) === maxTotal`. Tied chains are all kept. Both walks are cycle-safe (a back edge inside an in-progress walk contributes 0); a pure cycle yields the empty result rather than hanging.
+
+**Two toggles**, both persisted to `localStorage['gantt-critical']` as `{ on, scope }`, state in `App.tsx`, controls rendered in the `GanttPanel` topbar: on/off, plus scope `'project'` (compute over all `tasks`) vs `'view'` (over `filteredTasks`). `ExportDialog` has its own equivalent pair in `localStorage['gantt-export-opts']` (`highlightCritical`, `critScope: 'project' | 'export'`).
+
+**Styling is red outline, fill preserved**, so ClickUp status colors survive. Live chart: `GanttPanel` appends a `critical` token to `custom_class` (hence the `Bar.refresh()` fork fix above) and `App.css` strokes `.bar-wrapper.critical .bar` with `!important`, since gantt.css pins `stroke-width: 0`. Arrows carry no class, so `applyCriticalArrows()` re-marks `path[data-from][data-to]` after every init/refresh — arrows are rebuilt each refresh. Left panel gets `.task-row--critical` (inset box-shadow, so row height stays 48px). Color lives in `--critical` (`App.css`) and `C.critical` (`exportGantt.ts`), which must stay in sync.
+
+Export: `ExportOptions.criticalIds` / `.criticalEdges` are precomputed by `ExportDialog` over the **whole** selection and passed down — never computed inside `buildGanttSvg`, which receives row slices per page and would otherwise produce a different path on every page.
+
 ## Export to PNG / PDF
 
 "Export" button in the app header opens `ExportDialog`. The exported picture is **redrawn from the task array**, never screenshotted from the live chart — the on-screen gantt mixes SVG bars with absolutely positioned HTML header divs and is clipped by `.gantt-container`'s scroll box. No new dependencies.
@@ -100,7 +115,7 @@ Tasks without `start`/`end` are valid and appear in the left panel like any othe
 - PDF — no PDF library. `printPages` writes an off-screen iframe with `@page` sized to the chosen paper and calls `print()`; the user picks "Save as PDF" (vector, selectable text).
 - `buildPages` splits row-outer / date-inner. Vertical slices come from rows-per-page, horizontal slices from `dateSlices` (greedy, cut on unit boundaries). Each page is a fresh `buildGanttSvg` call on a row+date subset, so the header band and LHS columns repeat for free. With `multipage` off, one page is emitted and the print CSS scales it to fit (`preserveAspectRatio="xMinYMin meet"`, never upscaled).
 
-**Dialog** (`src/components/ExportDialog.tsx`): format, task scope (visible / all / manual pick), dateless toggle, time period (fit / custom via the existing `DatePicker`), left columns, unit (auto/day/week/month), arrows + today + title, then paper/orientation/`Allow multiple pages` (PDF) or scale (PNG). Live preview re-runs the pure builder in a `useMemo`. Options persist to `localStorage['gantt-export-opts']` (dates and manual picks excluded).
+**Dialog** (`src/components/ExportDialog.tsx`): format, task scope (visible / all / manual pick), dateless toggle, time period (fit / custom via the existing `DatePicker`), left columns, unit (auto/day/week/month), arrows + today + critical path (with its own project/exported scope) + title, then paper/orientation/`Allow multiple pages` (PDF) or scale (PNG). Live preview re-runs the pure builder in a `useMemo`. Options persist to `localStorage['gantt-export-opts']` (dates and manual picks excluded).
 
 ## ClickUp two-way sync
 

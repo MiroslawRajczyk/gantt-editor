@@ -10,6 +10,7 @@ import {
   PAPER_LABELS, buildPages, downloadPng, effectiveScale, pageCount, paperGeom, printPages,
 } from '../lib/exportOutput'
 import type { PaperName } from '../lib/exportOutput'
+import { EMPTY_CRITICAL, computeCriticalPath } from '../lib/criticalPath'
 
 interface Props {
   tasks: GanttTask[]      // currently visible (filters applied)
@@ -19,6 +20,7 @@ interface Props {
 
 type Format = 'png' | 'pdf'
 type Scope = 'visible' | 'all' | 'pick'
+type CritScope = 'project' | 'export'
 type UnitChoice = TimeUnit | 'auto'
 
 const STORAGE_KEY = 'gantt-export-opts'
@@ -31,6 +33,8 @@ interface StoredOpts {
   unit: UnitChoice
   showArrows: boolean
   showToday: boolean
+  highlightCritical: boolean
+  critScope: CritScope
   paper: PaperName
   landscape: boolean
   multipage: boolean
@@ -45,6 +49,8 @@ const DEFAULTS: StoredOpts = {
   unit: 'auto',
   showArrows: true,
   showToday: true,
+  highlightCritical: false,
+  critScope: 'project',
   paper: 'a4',
   landscape: true,
   multipage: false,
@@ -82,6 +88,8 @@ export function ExportDialog({ tasks, allTasks, onClose }: Props) {
   const [title, setTitle] = useState('')
   const [showArrows, setShowArrows] = useState(stored.showArrows)
   const [showToday, setShowToday] = useState(stored.showToday)
+  const [highlightCritical, setHighlightCritical] = useState(stored.highlightCritical)
+  const [critScope, setCritScope] = useState<CritScope>(stored.critScope)
   const [paper, setPaper] = useState<PaperName>(stored.paper)
   const [landscape, setLandscape] = useState(stored.landscape)
   const [multipage, setMultipage] = useState(stored.multipage)
@@ -102,11 +110,12 @@ export function ExportDialog({ tasks, allTasks, onClose }: Props) {
     const toStore: StoredOpts = {
       format, scope, includeDateless,
       columns: COLUMN_ORDER.filter(c => columnSet.has(c)),
-      unit: unitChoice, showArrows, showToday, paper, landscape, multipage, pngScale,
+      unit: unitChoice, showArrows, showToday, highlightCritical, critScope,
+      paper, landscape, multipage, pngScale,
     }
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore)) } catch { /* quota */ }
   }, [format, scope, includeDateless, columnSet, unitChoice, showArrows, showToday,
-      paper, landscape, multipage, pngScale])
+      highlightCritical, critScope, paper, landscape, multipage, pngScale])
 
   /* ------------------------------------------------------------ derived */
 
@@ -129,11 +138,23 @@ export function ExportDialog({ tasks, allTasks, onClose }: Props) {
   const rangeValid = from <= to
   const unit: TimeUnit = unitChoice === 'auto' ? autoUnit(from, to) : unitChoice
 
+  // Computed once over the whole set being exported, never per page: buildPages
+  // hands each page a slice of the rows, which would otherwise yield a different
+  // path on every page.
+  const critical = useMemo(
+    () => (highlightCritical
+      ? computeCriticalPath(critScope === 'export' ? selected : allTasks)
+      : EMPTY_CRITICAL),
+    [highlightCritical, critScope, selected, allTasks],
+  )
+
   const opts: ExportOptions = useMemo(() => ({
     columns, from, to, unit,
     title: title.trim() || undefined,
     showToday, showArrows,
-  }), [columns, from, to, unit, title, showToday, showArrows])
+    criticalIds: critical.taskIds,
+    criticalEdges: critical.edges,
+  }), [columns, from, to, unit, title, showToday, showArrows, critical])
 
   const built = useMemo(
     () => (selected.length && rangeValid ? buildGanttSvg(selected, opts) : null),
@@ -321,6 +342,32 @@ export function ExportDialog({ tasks, allTasks, onClose }: Props) {
                 <input type="checkbox" checked={showToday} onChange={e => setShowToday(e.target.checked)} />
                 Today marker
               </label>
+              <label className="exp-check">
+                <input
+                  type="checkbox"
+                  checked={highlightCritical}
+                  onChange={e => setHighlightCritical(e.target.checked)}
+                />
+                Critical path
+              </label>
+              {highlightCritical && (
+                <div className="exp-seg exp-seg--sm">
+                  <button
+                    type="button"
+                    className={critScope === 'project' ? 'is-on' : ''}
+                    onClick={() => setCritScope('project')}
+                  >
+                    Whole project
+                  </button>
+                  <button
+                    type="button"
+                    className={critScope === 'export' ? 'is-on' : ''}
+                    onClick={() => setCritScope('export')}
+                  >
+                    Exported tasks
+                  </button>
+                </div>
+              )}
               <label className="exp-field">
                 <span>Title</span>
                 <input

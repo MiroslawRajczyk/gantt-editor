@@ -15,9 +15,10 @@ interface Props {
   onDrop: (index: number) => void
   onDragEnd: () => void
   isDragOver: boolean
+  isCritical: boolean
 }
 
-export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver }: Props) {
+export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver, isCritical }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(task.name)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -41,7 +42,7 @@ export function TaskRow({ task, index, onUpdate, onRemove, onOpenDetail, onDragS
 
   return (
     <div
-      className={`task-row${isDragOver ? ' task-row--drag-over' : ''}${ms ? ' task-row--milestone' : ''}`}
+      className={`task-row${isDragOver ? ' task-row--drag-over' : ''}${ms ? ' task-row--milestone' : ''}${isCritical ? ' task-row--critical' : ''}`}
       style={{ height: GANTT_ROW_HEIGHT }}
       draggable
       onDragStart={() => onDragStart(index)}

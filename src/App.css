@@ -5,6 +5,8 @@
   --accent-soft: #f5f5ff;
   --danger: #e55;
   --milestone: #f5a623;
+  /* keep in sync with C.critical in src/lib/exportGantt.ts */
+  --critical: #e5484d;
   --danger-soft: #fff0f0;
   --surface: #fff;
   --surface-2: #fafafa;
@@ -349,6 +351,11 @@
 
 .task-row:hover {
   background: #fafafa;
+}
+
+/* Inset so the row stays exactly 48px and keeps LHS/RHS rows aligned */
+.task-row--critical {
+  box-shadow: inset 3px 0 0 var(--critical);
 }
 
 .task-row__name {
@@ -890,6 +897,78 @@
 .gantt .bar-wrapper.bar--selected .bar {
   stroke: #7c85f5 !important;
   stroke-width: 2.5 !important;
+}
+
+/* Critical path. !important because gantt.css pins .bar-wrapper .bar to
+   stroke-width: 0. Milestones need no extra rule — the diamond is the same
+   <rect>, only rotated. */
+.gantt .bar-wrapper.critical .bar {
+  stroke: var(--critical) !important;
+  stroke-width: 2 !important;
+}
+
+/* A rule on the path itself beats the stroke inherited from the .arrow layer */
+.gantt .arrow path.arrow--critical {
+  stroke: var(--critical);
+  stroke-width: 2.4;
+}
+
+.gantt-panel__topbar-spacer {
+  flex: 1;
+}
+
+.gantt-panel__crit-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+  background: #fff;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.gantt-panel__crit-btn:hover {
+  border-color: var(--critical);
+  color: var(--critical);
+  background: #fff5f5;
+}
+
+.gantt-panel__crit-btn--active {
+  background: #fff0f0;
+  border-color: var(--critical);
+  color: var(--critical);
+}
+
+.gantt-panel__crit-scope {
+  display: flex;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gantt-panel__crit-scope-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 0;
+  font-size: 12px;
+  color: #666;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.gantt-panel__crit-scope-btn + .gantt-panel__crit-scope-btn {
+  border-left: 1px solid #e8e8e8;
+}
+
+.gantt-panel__crit-scope-btn--active {
+  background: #fff0f0;
+  color: var(--critical);
+  font-weight: 600;
 }
 
 /* Task row detail button */

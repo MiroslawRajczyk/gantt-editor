@@ -38,6 +38,10 @@ export interface ClickUpConfig {
   lastSyncAt?: string
 }
 
+// Whether the critical path is computed over every task or over the rows the
+// current filters leave visible.
+export type CriticalScope = 'project' | 'view'
+
 export type FilterType =
   | 'status' | 'tag' | 'assignee' | 'priority' | 'name'
   | 'due' | 'start' | 'deps' | 'unscheduled'

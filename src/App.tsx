@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTasks } from './hooks/useTasks'
 import { useClickUpConfig } from './hooks/useClickUpConfig'
 import { TaskPanel } from './components/TaskPanel'
@@ -9,12 +9,26 @@ import { TaskDetailPopup } from './components/TaskDetailPopup'
 import { ExportDialog } from './components/ExportDialog'
 import { applyFilters, getAllSuccessors } from './utils'
 import { syncWithClickUp } from './lib/sync'
-import type { Filter, GanttTask, SyncReport } from './types'
+import { EMPTY_CRITICAL, computeCriticalPath } from './lib/criticalPath'
+import type { CriticalScope, Filter, GanttTask, SyncReport } from './types'
 import './App.css'
 
 const MIN_PCT = 15
 const MAX_PCT = 70
 const DEFAULT_PCT = 30
+
+const CRITICAL_KEY = 'gantt-critical'
+
+function loadCritical(): { on: boolean; scope: CriticalScope } {
+  try {
+    const raw = localStorage.getItem(CRITICAL_KEY)
+    if (raw) {
+      const p = JSON.parse(raw) as { on?: boolean; scope?: CriticalScope }
+      return { on: !!p.on, scope: p.scope === 'view' ? 'view' : 'project' }
+    }
+  } catch { /* malformed entry */ }
+  return { on: false, scope: 'project' }
+}
 
 export default function App() {
   const { tasks, setTasks, commitTask, removeTask, updateTask, reorderTask, clearTasks } = useTasks()
@@ -29,11 +43,25 @@ export default function App() {
   const [filters, setFilters] = useState<Filter[]>([])
   const [matchMode, setMatchMode] = useState<'all' | 'any'>('all')
   const filteredTasks = useMemo(() => applyFilters(tasks, filters, matchMode), [tasks, filters, matchMode])
+  const [criticalOn, setCriticalOn] = useState(() => loadCritical().on)
+  const [criticalScope, setCriticalScope] = useState<CriticalScope>(() => loadCritical().scope)
+  const critical = useMemo(
+    () => (criticalOn
+      ? computeCriticalPath(criticalScope === 'view' ? filteredTasks : tasks)
+      : EMPTY_CRITICAL),
+    [criticalOn, criticalScope, tasks, filteredTasks],
+  )
   const containerRef = useRef<HTMLDivElement>(null)
   const taskListRef = useRef<HTMLDivElement>(null)
   const isSyncingRef = useRef(false)
   const scrollCleanupRef = useRef<(() => void) | null>(null)
   const lhsFocusIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CRITICAL_KEY, JSON.stringify({ on: criticalOn, scope: criticalScope }))
+    } catch { /* quota */ }
+  }, [criticalOn, criticalScope])
 
   const onSync = useCallback(async () => {
     if (!config?.token || !config.listId) return
@@ -215,6 +243,7 @@ export default function App() {
             onReorder={reorderTask}
             onOpenDetail={(id) => setDetailTaskId(id)}
             listRef={taskListRef}
+            criticalIds={critical.taskIds}
           />
         </div>
         <Divider onResize={handleResize} />
@@ -225,6 +254,12 @@ export default function App() {
             onContainerReady={handleContainerReady}
             onToggleDependency={handleToggleDependency}
             focusIdRef={lhsFocusIdRef}
+            criticalIds={critical.taskIds}
+            criticalEdges={critical.edges}
+            criticalOn={criticalOn}
+            onToggleCritical={() => setCriticalOn(v => !v)}
+            criticalScope={criticalScope}
+            onCriticalScopeChange={setCriticalScope}
           />
         </div>
       </div>

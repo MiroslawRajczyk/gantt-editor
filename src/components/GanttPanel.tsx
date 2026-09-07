@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import FrappeGantt from 'frappe-gantt'
 import type FrappeGanttNS from 'frappe-gantt'
-import type { GanttTask } from '../types'
+import type { CriticalScope, GanttTask } from '../types'
 import { getAllSuccessors, isMilestone } from '../utils'
+import { edgeKey } from '../lib/criticalPath'
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -14,6 +15,12 @@ interface Props {
   onContainerReady: (el: HTMLElement) => void
   onToggleDependency: (sourceId: string, targetId: string) => void
   focusIdRef?: React.MutableRefObject<string | null>
+  criticalIds: Set<string>
+  criticalEdges: Set<string>
+  criticalOn: boolean
+  onToggleCritical: () => void
+  criticalScope: CriticalScope
+  onCriticalScopeChange: (scope: CriticalScope) => void
 }
 
 export function GanttPanel({
@@ -22,6 +29,12 @@ export function GanttPanel({
   onContainerReady,
   onToggleDependency,
   focusIdRef,
+  criticalIds,
+  criticalEdges,
+  criticalOn,
+  onToggleCritical,
+  criticalScope,
+  onCriticalScopeChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const ganttRef = useRef<InstanceType<typeof FrappeGantt> | null>(null)
@@ -73,6 +86,18 @@ export function GanttPanel({
     }
   }
 
+  // Arrows carry no class of their own — frappe-gantt draws them as bare paths
+  // tagged with data-from / data-to — and they are rebuilt on every refresh, so
+  // the critical ones are re-marked after each render.
+  function applyCriticalArrows() {
+    containerRef.current
+      ?.querySelectorAll<SVGPathElement>('path[data-from][data-to]')
+      .forEach(p => {
+        const key = edgeKey(p.getAttribute('data-from')!, p.getAttribute('data-to')!)
+        p.classList.toggle('arrow--critical', criticalEdges.has(key))
+      })
+  }
+
   function highlightBar(taskId: string, on: boolean) {
     containerRef.current
       ?.querySelector(`[data-id="${taskId}"]`)
@@ -108,17 +133,21 @@ export function GanttPanel({
 
     const frappeTasks = tasks.map(t => {
       const deps = t.dependencies?.join(',') ?? ''
+      // custom_class is a space-joined token list, read by the fork's Bar.refresh
+      const crit = criticalIds.has(t.id) ? 'critical' : ''
       if (isMilestone(t)) {
         // A milestone carries a single date; it is drawn as a diamond by the
         // Milestone bar subclass in the vendored frappe-gantt fork.
         const d = t.end ?? t.start
         if (!d) return { id: t.id, name: t.name, _placeholder: true, progress: 0, dependencies: '' }
         return { id: t.id, name: t.name, start: toDateStr(d), end: toDateStr(d),
-                 progress: 0, dependencies: deps, _milestone: true, custom_class: 'milestone' }
+                 progress: 0, dependencies: deps, _milestone: true,
+                 custom_class: crit ? `milestone ${crit}` : 'milestone' }
       }
       return t.start && t.end
         ? { id: t.id, name: t.name, start: toDateStr(t.start), end: toDateStr(t.end),
-            progress: t.progress, dependencies: deps }
+            progress: t.progress, dependencies: deps,
+            ...(crit ? { custom_class: crit } : {}) }
         : { id: t.id, name: t.name, _placeholder: true, progress: 0, dependencies: '' }
     }) as FrappeGanttNS.Task[]
 
@@ -176,6 +205,8 @@ export function GanttPanel({
         gc.scrollLeft = newSl
         gc.scrollTop = st
       }
+
+      applyCriticalArrows()
     } else {
       const panelHeight = containerRef.current.clientHeight
 
@@ -224,8 +255,10 @@ export function GanttPanel({
         ganttContainer.style.height = `${panelHeight}px`
         onContainerReadyRef.current(ganttContainer)
       }
+
+      applyCriticalArrows()
     }
-  }, [tasks])
+  }, [tasks, criticalIds, criticalEdges]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const connectLabel = connectSource
     ? `Click the successor task  (Esc to cancel)`
@@ -244,6 +277,35 @@ export function GanttPanel({
         {connectMode && (
           <span className="gantt-panel__connect-hint">{connectLabel}</span>
         )}
+        <div className="gantt-panel__topbar-spacer" />
+        {criticalOn && (
+          <div className="gantt-panel__crit-scope" role="group" aria-label="Critical path scope">
+            <button
+              type="button"
+              className={`gantt-panel__crit-scope-btn${criticalScope === 'project' ? ' gantt-panel__crit-scope-btn--active' : ''}`}
+              onClick={() => onCriticalScopeChange('project')}
+              title="Compute the critical path over every task"
+            >
+              Project
+            </button>
+            <button
+              type="button"
+              className={`gantt-panel__crit-scope-btn${criticalScope === 'view' ? ' gantt-panel__crit-scope-btn--active' : ''}`}
+              onClick={() => onCriticalScopeChange('view')}
+              title="Compute the critical path over the currently visible tasks only"
+            >
+              View
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          className={`gantt-panel__crit-btn${criticalOn ? ' gantt-panel__crit-btn--active' : ''}`}
+          onClick={onToggleCritical}
+          title="Highlight the longest chain of dependent tasks"
+        >
+          ◆ Critical path
+        </button>
       </div>
 
       {tasks.length === 0 && (
